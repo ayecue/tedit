@@ -1,0 +1,53 @@
+codeEditorPluginModule = function(deps)
+	Highlighter = deps[0]
+
+	CodeEditorPlugin = {}
+
+	CodeEditorPlugin.Highlighter = Highlighter
+	CodeEditorPlugin.constructor = function(content)
+		me = self
+
+		me.content = content
+
+		return me
+	end function
+
+	CodeEditorPlugin.render = function(state)
+		index = 0
+		code = Highlighter.parse(state.getItem("lines").join(char(10)))
+		lines = code.split(char(10))
+		numberWidth = str(lines.len).len
+
+		print("<b><u>tedit</u></b>")
+
+		for line in lines
+			output = ""
+
+			if (index == state.getItem("pos")) then
+				output = "<b>></b>"
+			end if
+
+			lineNumber = str(index)
+
+			if (lineNumber.len < numberWidth) then
+				lineNumber = (" " * (numberWidth - lineNumber.len)) + lineNumber
+			end if
+
+			output = output + lineNumber + " | " + char(9)
+			output = output + line
+
+			print(output)
+
+			index = index + 1
+		end for
+
+		print(Highlighter.errors.join(char(10)))
+
+		state.set("enter-code")
+		return null
+	end function
+
+	return CodeEditorPlugin
+end function
+
+injector.def("codeEditorPlugin", ["highlighter"], @codeEditorPluginModule)

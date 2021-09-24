@@ -1,0 +1,339 @@
+basicEditorModule = function(deps)
+	State = deps[0]
+	enrichedUserInput = deps[1]
+	VimLexer = deps[2]
+
+	BasicEditor = {}
+
+	BasicEditor.State = State
+	BasicEditor.VimLexer = VimLexer
+	BasicEditor.enrichedUserInput = enrichedUserInput
+	BasicEditor.constructor = function(file, computer, config)
+		me = self
+
+		me.computer = computer
+
+		parsedFile = me.parseFile(file)
+
+		if (typeof(parsedFile) == "string") then
+			exit("Error: " + parsedFile)
+		end if
+
+		me.state = (new State).constructor()
+
+		me.state.setItem("instance", me)
+		me.state.setItem("mode", me.getModes().visual)
+		me.state.setItem("cursor-line", 0)
+		me.state.setItem("cursor-offset", 0)
+
+		me.file = parsedFile
+		me.lines = parsedFile.get_content.split(char(10))
+		me.config = {
+			"line-position-color": "yellow",
+			"cursor-position-color": "yellow"
+		}
+
+		me.state.events.on("interact", @me.onInteract)
+
+		return me 
+	end function
+
+	BasicEditor.supports = function(file)
+		return true
+	end function
+
+	BasicEditor.getModes = function()
+		return {
+			"visual": 1,
+			"insert": 2
+		}
+	end function
+
+	BasicEditor.getMainCmds = function()
+		return {
+			":sav": "saveAs",
+			":saveas": "saveAs",
+			":h": "help",
+			":help": "help",
+			":q": "close",
+			":w": "save",
+			":x": "saveQuit"
+		}
+	end function
+
+	BasicEditor.getDisplayCmds = function()
+		return {
+			"h": "moveLeft",
+			"j": "moveDown",
+			"k": "moveUp",
+			"l": "moveRight",
+			"o": "appendAbove",
+			"O": "appendBelow",
+			"d": "deleteLine"
+		}
+	end function
+
+	BasicEditor.parseFile = function(file)
+		me = self
+		computer = me.computer
+		currentUser = active_user
+		fileType = typeof(file)
+
+		if (fileType == "string") then
+			fileHandle = computer.File(file)
+
+			if (not fileHandle) then
+				if (me.enrichedUserInput.confirm("This file does not exist. Do you want to create it.")) then
+					dir = parent_path(file)
+					filename = file.split("/").pop()
+
+					if (filename == "") then
+						return "Empty file name"
+					end if
+
+					result = computer.touch(dir, filename)
+
+					if (typeof(result) == "string") then
+						if (currentUser != "root") then
+							password = me.enrichedUserInput.prompt("Root password:", true)
+							rootShell = get_shell("root", password)
+
+							if (rootShell == null) then
+								return "Invalid root password"
+							end if
+
+							currentUser = "root"
+							computer = rootShell.host_computer
+							result = computer.touch(dir, filename)
+
+							if (typeof(result) == "string") then
+								return result
+							end if
+						else
+							return result
+						end if
+					end if
+
+					fileHandle = computer.File(file)
+
+					if (fileHandle == null) then
+						return "Cannot find file"
+					end if
+
+					if (currentUser == "root") then
+						fileHandle.chmod("u-wrx")
+						fileHandle.chmod("g-wrx")
+						fileHandle.chmod("o-wrx")
+					end if
+				end if
+			end if
+
+			return me.parseFile(fileHandle)
+		else if (fileType == "file") then
+			if (not file.has_permission("r")) then
+				return "No read access"
+			end if
+
+			if (not file.has_permission("w")) then
+				return "No write access"
+			end if
+
+			return file
+		end if
+
+		return "Invalid file value: " + fileType
+	end function
+
+	BasicEditor.onInteract = function(state, stdin)
+		me = state.getItem("instance")
+		mode = state.getItem("mode")
+
+		if (mode == me.getModes().visual) then
+			me.visualInteract()
+		end if
+	end function
+
+	BasicEditor.parseCmdInput = function(cmdInput)
+		me = self
+		forced = false
+		isMainCmd = false
+		value = null
+		cmd = null
+		lexer = (new me.VimLexer).constructor(cmdInput)
+		token = lexer.next()
+
+		while (token)
+			if (token.type == "force") then
+				forced = true
+			else if (token.type == "numeric") then
+				value = token.value
+			else if (token.type == "colon") then
+				isMainCmd = true
+			else if (token.type == "identifier") then
+				cmd = token.value
+			else if (token.type == "eof") then
+				break
+			end if
+
+			token = lexer.next()
+		end while
+
+		return {
+			"classID": "vim-cmd",
+			"forced": forced,
+			"isMainCmd": isMainCmd,
+			"value": value,
+			"cmd": cmd
+		}
+	end function
+
+	BasicEditor.visualInteract = function()
+		me = self
+		cmds = me.getDisplayCmds()
+
+		print("<b>Actions:</b> " + cmds.indexes.join(", "))
+		response = me.enrichedUserInput.prompt(char(10) + "> ")
+		vimCmd = me.parseCmdInput(response.raw)
+
+		if (vimCmd.isMainCmd) then
+			print("not implemented yet")
+		else
+			if (cmds.hasIndex(vimCmd.cmd)) then
+				me.visualInteractEval(cmds[vimCmd.cmd], vimCmd.value)
+			else
+				print("Unknown command")
+			end if
+		end if
+
+		me.render()
+		me.state.set("interact")
+	end function
+
+	BasicEditor.visualInteractEval = function(command, value)
+		me = self
+		cursorLine = me.state.getItem("cursor-line")
+		cursorOffset = me.state.getItem("cursor-offset")
+
+		if (command == "moveLeft") then
+			if (value == null) then value = 1;
+
+			me.setPosition(cursorLine, cursorOffset + (value * -1))
+		else if (command == "moveRight") then
+			if (value == null) then value = 1;
+
+			me.setPosition(cursorLine, cursorOffset + value)
+		else if (command == "moveUp") then
+			if (value == null) then value = 1;
+
+			me.setPosition(cursorLine + (value * -1), cursorOffset)
+		else if (command == "moveDown") then
+			if (value == null) then value = 1;
+
+			me.setPosition(cursorLine + value, cursorOffset)
+		end if
+	end function
+
+	BasicEditor.setPosition = function(position, offset)
+		me = self
+		linesLength = me.lines.len
+		
+		if (linesLength < position) then
+			position = linesLength - 1
+		else if (position < 0) then
+			position = 0
+		end if
+
+		line = me.lines[position]
+		lineLength = line.len
+
+		if (lineLength < offset) then
+			offset = lineLength - 1
+		else if (offset < 0) then
+			offset = 0
+		end if
+
+		me.state.setItem("cursor-line", position)
+		me.state.setItem("cursor-offset", offset)
+	end function
+
+	BasicEditor.prepareLine = function(line, index)
+		me = self
+		state = me.state
+		output = line
+
+		if (index == state.getItem("cursor-line")) then
+			offset = state.getItem("cursor-offset")
+			lineLength = line.len
+			nextOffset = offset + 1
+
+			left = ""
+			right = ""
+			current = output[offset: nextOffset]
+
+			if (nextOffset < lineLength) then
+				right = output[nextOffset:]
+			end if
+
+			if (offset > 0) then
+				left = output[:offset]
+			end if
+
+			output = left + "<mark=" + me.config["cursor-position-color"] + ">" + current + "</mark>" + right
+		end if
+
+		return output
+	end function
+
+	BasicEditor.prepareLineNumber = function(index, maxWidth)
+		me = self
+		state = me.state
+		output = ""
+
+		lineNumber = str(index)
+
+		if (lineNumber.len < maxWidth) then
+			lineNumber = (" " * (maxWidth - lineNumber.len)) + lineNumber
+		end if
+
+		output = output + lineNumber + " | " + char(9)
+
+		if (index == state.getItem("cursor-line")) then
+			output = "<color=" + me.config["line-position-color"] + ">" + output + "</color>"
+		end if
+
+		return output
+	end function
+
+	BasicEditor.render = function()
+		me = self
+		index = 0
+		lines = me.lines
+		numberWidth = str(lines.len).len
+
+		clear_screen
+		wait(0.1)
+
+		print("<b><u>tedit</u></b>")
+
+		for line in lines
+			output = me.prepareLineNumber(index, numberWidth)
+			output = output + me.prepareLine(line, index)
+
+			print(output)
+
+			index = index + 1
+		end for
+
+		return null
+	end function
+
+	BasicEditor.open = function()
+		me = self
+		me.render()
+		me.state.set("interact")
+	end function
+
+	return BasicEditor
+end function
+
+injector.def("basicEditor", ["state", "enrichedUserInput", "vimLexer"], @basicEditorModule)

@@ -1,0 +1,618 @@
+interpreterModule = function(deps)
+	Parser = deps[0]
+
+	Interpreter = {}
+
+	Interpreter.Parser = Parser
+
+	Interpreter.binaryOps = {}
+	Interpreter.binaryOps["+"] = function(a, b)
+		return a + b
+	end function
+	Interpreter.binaryOps["-"] = function(a, b)
+		return a - b
+	end function
+	Interpreter.binaryOps["/"] = function(a, b)
+		return a / b
+	end function
+	Interpreter.binaryOps["*"] = function(a, b)
+		return a * b
+	end function
+	Interpreter.binaryOps["^"] = function(a, b)
+		return a ^ b
+	end function
+	Interpreter.binaryOps["<"] = function(a, b)
+		return a < b
+	end function
+	Interpreter.binaryOps[">"] = function(a, b)
+		return a > b
+	end function
+	Interpreter.binaryOps["%"] = function(a, b)
+		return a % b
+	end function
+	Interpreter.binaryOps["=="] = function(a, b)
+		return a == b
+	end function
+	Interpreter.binaryOps[">="] = function(a, b)
+		return a >= b
+	end function
+	Interpreter.binaryOps["<="] = function(a, b)
+		return a <= b
+	end function
+	Interpreter.binaryOps["!="] = function(a, b)
+		return a != b
+	end function
+	Interpreter.binaryOps["and"] = function(a, b)
+		return a and b
+	end function
+	Interpreter.binaryOps["or"] = function(a, b)
+		return a or b
+	end function
+
+	Interpreter.constructor = function(customValues, customMethods, logLevel, safeMode)
+		me = self
+
+		if (customValues == null) then customValues = {}
+		if (customMethods == null) then customMethods = {}
+		if (logLevel == null) then logLevel = 0
+		if (safeMode == null) then safeMode = false
+
+		me.global = {}
+		me.methods = {}
+		me.methods.print = @print
+
+		for item in customMethods
+			me.methods[item.key] = @item.value
+		end for
+
+		me.customValues = customValues
+		me.customValues.exports = {}
+		me.logLevel = logLevel
+		me.safeMode = safeMode
+		me.whitelist = {}
+
+		return me
+	end function
+
+	Interpreter.isValidCode = function(code)
+		me = self
+		parser = (new me.Parser).constructor(code)
+		node = parser.parseChunk()
+		return not parser.hasError()
+	end function
+
+	Interpreter.info = function(message)
+		me = self
+		if (me.logLevel == 0) then print("[INFO] " + message)
+		return null
+	end function
+
+	Interpreter.warn = function(message)
+		me = self
+		print("[WARNING] " + message)
+		return null
+	end function
+
+	Interpreter.hasExports = function()
+		me = self
+		return me.customValues.exports.len > 0
+	end function
+
+	Interpreter.getExports = function()
+		me = self
+		return me.customValues.exports
+	end function
+
+	Interpreter.hasPermission = function(handleType)
+		me = self
+
+		if (me.safeMode and not me.whitelist.hasIndex(handleType)) then
+			options = ["Are you sure you want to give access to <b>" + handleType + "</b>?"]
+			options.push(char(9) + "Y - For this instance")
+			options.push(char(9) + "X - For all instances in this execution")
+			options.push("To deny access press <b>any</b> other key")
+
+			stdin = user_input(options.join(char(10)) + char(10) + "> ").trim.lower
+
+			if (stdin == "x") then
+				print("Adding <b>" + handleType + "</b> to whitelist.")
+				me.whitelist[handleType] = true
+			else if (stdin != "y") then
+				return false
+			end if
+		end if
+
+		return true
+	end function
+
+	Interpreter.run = function(code)
+		me = self
+
+		parser = (new me.Parser).constructor(code)
+		node = parser.parseChunk()
+		
+		if (parser.hasError()) then
+			me.warn("Parser failed with following stack:")
+
+			for item in parser.status.errors
+				print(item)
+			end for
+			
+			return me
+		end if
+
+		me.digest(node)
+
+		return me
+	end function
+
+	Interpreter.setCustomValue = function(path, value)
+		me = self
+		traversalPath = []
+		pathType = typeof(path)
+
+		if (pathType == "pathList") then
+			traversalPath = traversalPath + path.paths
+		else if (pathType == "path") then
+			traversalPath = [path]
+		else if (pathType == "index") then
+			traversalPath = [path]
+		else
+			me.warn("Unexpected key value")
+			return null
+		end if
+
+		last = traversalPath.pop()
+		current = me.customValues
+
+		for item in traversalPath
+			itemType = typeof(item)
+
+			if (itemType != "path" and itemType != "index") then
+				me.warn("Unexpected path item type <b>" + itemType + "</b>")
+				return null
+			end if
+
+			if (current.hasIndex(item.value)) then
+				current = current[item.value]
+			else
+				current = null
+				me.warn("Key <b>" + item.value + "</b> does not exist")
+				break
+			end if
+		end for
+
+		if (current != null) then
+			current[last.value] = value
+		end if
+
+		return null
+	end function
+
+	Interpreter.nativeListMethods = ["hasIndex", "indexOf", "remove", "join", "push", "pop", "pull", "shuffle", "reverse", "sort", "indexes", "len", "sum", "values"]
+	Interpreter.alwaysLegitMethods = ["hasIndex", "indexOf", "remove", "indexes"]
+
+	Interpreter.hasMember = function(handle, method)
+		me = self
+		if (typeof(handle) == "list") then
+			return me.nativeListMethods.indexOf(method) != null or handle.hasIndex(method)
+		else if (me.alwaysLegitMethods.indexOf(method) != null) then
+			return true
+		end if
+		return handle.hasIndex(method) or (handle.hasIndex("__isa") and handle.__isa.hasIndex(method))
+	end function
+
+	Interpreter.handleTypes = ["map", "list", "string", "boolean", "number"]
+	Interpreter.riskHandles = ["metaxploit", "metaLib", "crypto", "router", "shell", "computer", "file", "ftpShell", "netSession", "target", "localStorage"]
+	Interpreter.requiresContext = ["metaxploit", "metaLib", "crypto", "router", "shell", "computer", "file", "ftpShell", "netSession", "target", "map", "list", "string", "toolkit", "localStorage"]
+	Interpreter.resolve = function(path)
+		me = self
+		traversalPath = []
+		pathType = typeof(path)
+
+		if (pathType == "pathList") then
+			traversalPath = traversalPath + path.paths
+		else if (pathType == "path") then
+			traversalPath = [path]
+		else
+			return path
+		end if
+
+		current = null
+
+		for item in traversalPath
+			itemType = typeof(item)
+
+			if (itemType == "path" and current == null) then
+				if (not me.customValues.hasIndex(item.value)) then
+					me.warn("Path <b>" + item.value + "</b> does not exist")
+					return null
+				end if
+
+				current = @me.customValues[item.value]
+
+				if (typeof(@current) == "function") then
+					current = current()
+				end if
+			else if ((me.handleTypes.indexOf(itemType) or me.riskHandles.indexOf(itemType)) and current == null) then
+				current = item
+			else if (itemType == "index" and current != null) then
+				if (not me.hasMember(current, item.value)) then
+					me.warn("Index <b>" + item.value + "</b> does not exist on handle <b>" + typeof(@current) + "</b>")
+					return null
+				end if
+				
+				current = @current[item.value]
+			else if (itemType == "path" and current != null) then
+				if (not me.hasMember(current, item.value)) then
+					me.warn("Path <b>" + item.value + "</b> does not exist on handle <b>" + typeof(@current) + "</b>")
+					return null
+				end if
+
+				previous = @current
+				current = @current[item.value]
+
+				if (typeof(@current) == "function") then
+					current = current(previous)
+				end if
+			end if
+
+			handleType = typeof(@current)
+
+			if (Interpreter.riskHandles.indexOf(handleType) != null) then
+				if (not me.hasPermission(handleType)) then return null
+			end if
+		end for
+
+		return current
+	end function
+
+	Interpreter.runCallExpression = function(path, args)
+		me = self
+		methods = me.methods
+		current = null
+		last = null
+		pathType = typeof(path)
+		requiresContext = false
+
+		if (pathType == "path") then
+			last = path
+		else if (pathType == "pathList") then
+			traversalPath = [] + path.paths
+			last = traversalPath.pop()
+
+			for item in traversalPath
+				itemType = typeof(item)
+
+				if (itemType == "path" and current == null) then
+					if (not me.customValues.hasIndex(item.value)) then
+						me.warn("Path <b>" + item.value + "</b> does not exist <b>" + typeof(@current) + "</b>")
+						return null
+					end if
+
+					current = @me.customValues[item.value]
+
+					if (typeof(@current) == "function") then
+						current = current()
+					end if 
+
+					if (me.requiresContext.indexOf(typeof(@current)) != null) then
+						requiresContext = true
+					end if
+				else if ((me.handleTypes.indexOf(itemType) or me.riskHandles.indexOf(itemType)) and current == null) then
+					current = item
+				else if (itemType == "index" and current != null) then
+					if (not me.hasMember(current, item.value)) then
+						me.warn("Index <b>" + item.value + "</b> does not exist on handle <b>" + typeof(@current) + "</b>")
+						return null
+					end if
+
+					previous = @current
+					current = @current[item.value]
+				else if (itemType == "path" and current != null) then
+					if (not me.hasMember(current, item.value)) then
+						me.warn("Path <b>" + item.value + "</b> does not exist on handle <b>" + typeof(@current) + "</b>")
+						return null
+					end if
+
+					previous = @current
+					current = @current[item.value]
+
+					if (typeof(@current) == "function") then
+						current = current(previous)
+					end if 
+
+					if (me.requiresContext.indexOf(typeof(@current)) != null) then
+						requiresContext = true
+					end if
+				end if
+
+				handleType = typeof(@current)
+
+				if (Interpreter.riskHandles.indexOf(handleType) != null) then
+					if (not me.hasPermission(handleType)) then return null
+				end if
+			end for
+		end if
+
+		if (current == null) then
+			current = methods
+		end if
+
+		if (not me.hasMember(@current, last.value)) then
+			me.warn("Path <b>" + last.value + "</b> does not exist on handle <b>" + typeof(@current) + "</b>")
+			return null
+		end if
+
+		previous = @current
+		current = @current[last.value]
+
+		if (typeof(@current) != "function") then
+			me.warn("<b>" + last.value + "</b> is not a function")
+			return null
+		end if
+
+		result = null
+		argsLength = args.len
+
+		me.info("Executing <b>" + last.value + "</b>")
+
+		if (requiresContext) then
+			me.info("Using <b>" + typeof(@previous) + "</b> as context")
+		else
+			me.info("Using <b>null</b> as context")
+		end if
+
+		if (argsLength == 0) then
+			if (requiresContext) then
+				result = current(previous)
+			else
+				result = current()
+			end if
+		else if (argsLength == 1) then
+			if (requiresContext) then
+				result = current(previous, args[0])
+			else
+				result = current(args[0])
+			end if
+		else if (argsLength == 2) then
+			if (requiresContext) then
+				result = current(previous, args[0], args[1])
+			else
+				result = current(args[0], args[1])
+			end if
+		else if (argsLength == 3) then
+			if (requiresContext) then
+				result = current(previous, args[0], args[1], args[2])
+			else
+				result = current(args[0], args[1], args[2])
+			end if
+		else if (argsLength == 4) then
+			if (requiresContext) then
+				result = current(previous, args[0], args[1], args[2], args[3])
+			else
+				result = current(args[0], args[1], args[2], args[3])
+			end if
+		else if (argsLength == 5) then
+			if (requiresContext) then
+				result = current(previous, args[0], args[1], args[2], args[3], args[4])
+			else
+				result = current(args[0], args[1], args[2], args[3], args[4])
+			end if
+		end if
+
+		me.info("Received <b>" + result + "</b>")
+
+		return result
+	end function
+
+	Interpreter.digest = function(node, parent)
+		me = self
+		context = { "node": node, "previous": parent }
+
+		debug("Digesting: " + node.type)
+
+		if (node.type == "Chunk") then
+			for line in node.body
+				me.digest(line, context)
+			end for
+			return me.customValues.exports
+		else if (node.type == "AssignmentStatement") then
+			left = me.digest(node.variable, context)
+			right = me.resolve(me.digest(node.init, context))
+			leftType = typeof(left)
+
+			if (leftType == "pathList" or leftType == "path") then
+				me.setCustomValue(left, right)
+			else
+				me.warn("Unexpected type <b>" + leftType + "</b> on assign left expr")
+			end if
+
+			return
+		else if (node.type == "BinaryExpression") then
+			left = me.resolve(me.digest(node.left, context))
+			right = me.resolve(me.digest(node.right, context))
+			op = @me.binaryOps[node.operator]
+
+			return op(left, right)
+		else if (node.type == "LogicalExpression") then
+			left = me.resolve(me.digest(node.left, context))
+
+			if (node.operator == "and" and not left) then
+				return false;
+			else if (node.operator == "or" and left) then
+				return true;
+			end if
+
+			right = me.resolve(me.digest(node.right, context))
+			op = @me.binaryOps[node.operator]
+
+			return op(left, right)
+		else if (node.type == "CallStatement") then
+			me.digest(node.expression, context)
+			return
+		else if (node.type == "CallExpression") then
+			path = me.digest(node.base, context)
+			args = []
+
+			for arg in node.arguments
+				args.push(me.resolve(me.digest(arg, context)))
+			end for
+
+			pathType = typeof(path)
+			result = null
+
+			if (pathType == "pathList" or pathType == "path") then
+				result = me.runCallExpression(path, args)
+			else
+				me.warn("Unexpected type <b>" + pathType + "</b> on path in call expression")
+				return
+			end if
+
+			return result
+		else if (node.type == "StringLiteral") then
+			return node.value
+		else if (node.type == "NumericLiteral") then
+			return node.value
+		else if (node.type == "BooleanLiteral") then
+			return node.value
+		else if (node.type == "NilLiteral") then
+			return null
+		else if (node.type == "MapConstructorExpression") then
+			resultMap = {}
+
+			for field in node.fields
+				key = me.digest(field.key, context)
+				value = me.resolve(me.digest(field.value, context))
+
+				resultMap[key] = value
+			end for
+
+			return resultMap
+		else if (node.type == "ListConstructorExpression") then
+			resultList = []
+
+			for field in node.fields
+				value = me.digest(field.value, context)
+				resultList.push(me.resolve(value))
+			end for
+
+			return resultList
+		else if (node.type == "IfStatement") then
+			context.isBreak = false
+			context.isContinue = false
+
+			for clause in node.clauses
+				if (clause.type == "IfClause" or clause.type == "ElseifClause") then
+					isValid = me.resolve(me.digest(clause.condition, context));
+
+					if (isValid) then
+						for line in clause.body
+							me.digest(line, context)
+							if (context.isBreak or context.isContinue) then
+								parent.isContinue = context.isContinue
+								parent.isBreak = context.isBreak
+								break
+							end if
+						end for
+						return
+					end if
+				else if (clause.type == "ElseClause") then
+					for line in clause.body
+						me.digest(line, context)
+						if (context.isBreak or context.isContinue) then
+							parent.isContinue = context.isContinue
+							parent.isBreak = context.isBreak
+							break
+						end if
+					end for
+					return
+				end if
+			end for
+			return
+		else if (node.type == "ForGenericStatement") then
+			variable = me.digest(node.variable)
+			iterator = me.resolve(me.digest(node.iterator))
+			context.isBreak = false
+
+			for item in iterator
+				context.isContinue = false
+				me.setCustomValue(variable, item)
+
+				for line in node.body
+					me.digest(line, context)
+					if (context.isContinue) then break
+					if (context.isBreak) then break
+				end for
+
+				if (context.isContinue) then continue
+				if (context.isBreak) then break
+			end for
+			return
+		else if (node.type == "WhileStatement") then
+			context.isBreak = false
+
+			while (me.resolve(me.digest(node.condition, context)))
+				context.isContinue = false
+
+				for line in node.body
+					me.digest(line, context)
+					if (context.isBreak or context.isContinue) then break
+				end for
+
+				if (context.isContinue) then continue
+				if (context.isBreak) then break
+			end while
+			return
+		else if (node.type == "ContinueStatement") then
+			parent.isContinue = true
+			return
+		else if (node.type == "BreakStatement") then
+			parent.isBreak = true
+			return
+		else if (node.type == "NegationExpression") then
+			return not me.resolve(me.digest(node.argument, context))
+		else if (node.type == "Identifier") then
+			return {"classID": "path", "value": node.value}
+		else if (node.type == "MemberExpression") then
+			expr = { "classID": "pathList", "paths": [] }
+			base = me.digest(node.base, context)
+			baseType = typeof(base)
+			identifier = me.digest(node.identifier, context)
+			identifierType = typeof(identifier)
+
+			if (baseType == "pathList") then
+				expr.paths = expr.paths + base.paths
+			else if (baseType == "path" or baseType == "index") then
+				expr.paths.push(base)
+			else if (me.handleTypes.indexOf(baseType) != null or me.riskHandles.indexOf(baseType) != null) then
+				expr.paths.push(base)
+			else
+				me.warn("Unexpected type <b>" + baseType + "</b> on base")
+				return
+			end if
+
+			if (identifierType == "pathList") then
+				expr.paths = expr.paths + identifier.paths
+			else if (identifierType == "path" or identifierType == "index") then
+				expr.paths.push(identifier)
+			else
+				me.warn("Unexpected type <b>" + identifierType + "</b> on identifier")
+				return
+			end if
+
+			return expr
+		else if (node.type == "IndexExpression") then
+			base = me.digest(node.base, context)
+			index = me.resolve(me.digest(node.index, context))
+			path = {"classID": "index", "value": index}
+			return { "classID": "pathList", "paths": [base, path] }
+		end if
+
+		me.warn("<b>" + node.type + "</b> is not supported")
+	end function
+
+	return Interpreter
+end function
+
+injector.def("interpreter", ["parser"], @interpreterModule)

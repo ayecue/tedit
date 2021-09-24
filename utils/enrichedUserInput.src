@@ -1,0 +1,168 @@
+enrichedUserInputModule = function(deps)
+	State = deps[0]
+
+	UserInput = {}
+
+	UserInput.globalQueries = {}
+	UserInput.globalState = (new State).constructor()
+	UserInput.State = State
+
+	UserInput.prompt = function(message, isPassword)
+		if (isPassword == null) then isPassword = false
+		line = user_input(message, isPassword).trim
+		segments = line.split(" ")
+		cmd = segments.pull().trim()
+		return {"classID": "response","cmd":cmd,"args":segments.join(" "),"raw":line}
+	end function
+
+	UserInput.confirm = function(message)
+		me = self
+		response = me.prompt(message + " (Y/n)")
+		return response.cmd.lower == "y"
+	end function
+
+	UserInput.defaultParser = function(value)
+		segments = value.split(" ")
+		cmd = segments.pull().trim()
+
+		return {"classID": "response","cmd":cmd,"args":segments.join(" "),"raw":value}
+	end function
+
+	UserInput.defaultValidator = function(response, query)
+		if (query.isRequired) then
+			return response.cmd != null and response.cmd.len > 0
+		end if
+		return true
+	end function
+
+	UserInput.createValidator = function(context, fn)
+		return {"classID": "validator", "context": context, "fn": @fn}
+	end function
+
+	UserInput.query = function(name, message, defaultValue, isRequired, isGlobal, validators, parser)
+		me = self
+		if (typeof(@validators) == "validator") then validators = [validators]
+		if (typeof(@validators) == "function") then validators = [me.createValidator(null,@validators)]
+		if (@validators == null) then validators = []
+		validators.push(me.createValidator(null,@me.defaultValidator))
+		if (@parser == null) then parser = @me.defaultParser
+		query = {"classID":"query","name": name,"msg":message,"defaultValue":defaultValue,"isRequired":isRequired and not isGlobal,"validators":validators,"parser":@parser}
+
+		if (isGlobal) then
+			me.globalQueries[name] = query
+		end if
+
+		return query
+	end function
+
+	UserInput.request = function(queryList, allowExit, defaultInputMap, ignoreGlobalQuery)
+		if (ignoreGlobalQuery == null) then ignoreGlobalQuery = false
+		if (allowExit == null) then allowExit = true
+		if (defaultInputMap == null) then defaultInputMap = {}
+		if (typeof(queryList) == "query") then queryList = [queryList]
+
+		me = self
+		requestObj = {"classID":"request"}
+		requestObj.state = (new me.State).constructor()
+		requestObj.queryList = queryList
+		requestObj.globalState = me.globalState
+		requestObj.globalQueries = me.globalQueries
+		requestObj.allowExit = allowExit
+		requestObj.defaultInputMap = defaultInputMap
+		if (ignoreGlobalQuery) then requestObj.globalQueries = []
+		requestObj.send = function(callback)
+			me = self
+			response = {"classID":"response","map":{}}
+			response.get = function(path)
+				if (typeof(path) == "string") then path = path.split(".")
+				me = self
+				current = me.map
+
+				for item in path
+					if (typeof(current) != "map") then
+						return null
+					end if
+
+					if (current.hasIndex(item)) then
+						current = current[item]
+					else
+						return null
+					end if
+				end for
+
+				return current
+			end function
+
+			actions = me.globalQueries.indexes
+
+			if (actions.len > 0) then
+				print(char(10) + "<b>Other actions</b>: " + actions.join(", "))
+			end if
+
+			index = 0
+
+			while (index < me.queryList.len)
+				item = me.queryList[index]
+				name = item.name
+				defaultInput = ""
+
+				if (me.defaultInputMap.hasIndex(name)) then
+					defaultInput = me.defaultInputMap[name]
+				end if
+
+				stdin = user_input(item.msg + char(10) + "> " + defaultInput).trim
+				stdin = defaultInput + stdin
+
+				if (stdin == "") then
+					stdin = item.defaultValue
+				end if
+
+				stdin = item.parser(stdin)
+				isValid = true
+
+				if (me.allowExit and stdin.cmd == "exit") then
+					me.state.set("exit")
+					exit("Goodbye")
+				else if (me.globalQueries.hasIndex(stdin.cmd)) then
+					me.globalState.set(stdin.cmd, stdin)
+					me.state.set("global", stdin)
+					return null
+				end if
+
+				for validator in item.validators
+					if (not validator.fn(stdin, item)) then
+						isValid = false
+						break
+					end if
+				end for
+
+				if (not isValid) then
+					if (me.allowExit) then
+						print("Invalid input. (Type <b>exit</b> to cancel)")
+					else
+						print("Invalid input.")
+					end if
+					me.state.set("error", stdin)
+					continue
+				end if
+
+				me.state.set("resolved", stdin)
+
+				response.map[name] = stdin
+
+				index = index + 1
+			end while
+
+			me.state.set("finished", response)
+			if (@callback != null) then callback(response)
+
+			return response
+		end function
+
+		return requestObj
+	end function
+
+	return new UserInput
+end function
+
+injector.def("enrichedUserInput", ["state"], @enrichedUserInputModule)

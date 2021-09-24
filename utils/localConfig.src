@@ -1,0 +1,150 @@
+localConfigModule = function()
+	LocalConfig = {}
+	LocalConfig.constructor = function(computer, filepath)
+		me = self
+		me.classID = "localConfig"
+		me.computer = computer
+		me.filepath = filepath
+		me.data = {}
+		me.handle = null
+		me.assignChar = char(61)
+		me.read()
+		return me
+	end function
+
+	LocalConfig.parseContent = function(x, content)
+		me = self
+
+		if (typeof(me) != "localConfig") then
+			me = x
+		else
+			content = x
+		end if
+
+		content = content.split(char(10))
+		data = {}
+		
+		for row in content
+			segments = row.split(me.assignChar)
+			if (segments.len != 2) then continue
+			key = segments[0]
+			value = segments[1]
+			
+			data[key] = value
+		end for
+		
+		return data
+	end function
+
+	LocalConfig.read = function(x)
+		me = self
+
+		if (typeof(me) != "localConfig") then
+			me = x
+		end if
+
+		handle = me.computer.File(me.filepath)
+		
+		if (handle == null) then
+			dirname = parent_path(me.filepath)
+			filename = me.filepath.replace(dirname, "")
+			if (filename.indexOf("/") == 0) then filename = filename[1:]
+			me.computer.touch(dirname, filename)
+			handle = me.computer.File(me.filepath)
+
+			if (handle == null) then
+				print("Could not create config <b>" + me.filepath + "</b>")
+
+				if (active_user != "root") then
+					rootPW = user_input("Root password:", true)
+					rootShell = get_shell("root", rootPW)
+
+					if (rootShell != null) then
+						me.computer = rootShell.host_computer
+						me.read()
+					end if
+				end if
+				return
+			end if
+
+			handle.chmod("u-wrx")
+			handle.chmod("o-wrx")
+			handle.chmod("g-wrx")
+		end if
+		
+		me.handle = handle
+		parseData = me.parseContent(handle.get_content)
+		me.data = parseData
+	end function
+
+	LocalConfig.setDefault = function(x, data)
+		me = self
+
+		if (typeof(me) != "localConfig") then
+			me = x
+		else
+			data = x
+		end if
+
+		for item in data
+			me.write(item.key, item.value, false)
+		end for
+	end function
+
+	LocalConfig.import = function(x, data)
+		me = self
+
+		if (typeof(me) != "localConfig") then
+			me = x
+		else
+			data = x
+		end if
+
+		for item in data
+			me.write(item.key, item.value, true)
+		end for
+	end function
+
+	LocalConfig.write = function(x, key, value, override)
+		me = self
+
+		if (typeof(me) != "localConfig") then
+			me = x
+		else
+			override = value
+			value = key
+			key = x
+		end if
+		
+		if (me.data.hasIndex(key) and not override) then
+			return
+		end if
+
+		me.data[key] = value
+		rows = []
+		
+		for item in me.data
+			rows.push(item.key + me.assignChar + item.value)
+		end for
+		
+		if (me.handle) then
+			me.handle.set_content(me.rows.join(char(10)))
+		end if
+	end function
+
+	LocalConfig.get = function(x, key)
+		me = self
+
+		if (typeof(me) != "localConfig") then
+			me = x
+		else
+			key = x
+		end if
+
+		return me.data[key]
+	end function
+
+	return LocalConfig
+end function
+
+injector.def("localConfig", @localConfigModule)

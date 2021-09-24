@@ -1,0 +1,92 @@
+stateModule = function(deps)
+	EventEmitter = deps[0]
+	State = {}
+
+	State.EventEmitter = EventEmitter
+
+	State.constructor = function()
+		me = self
+		me.previousStates = []
+		me.state = "init"
+		me.store = {}
+		me.events = (new me.EventEmitter).constructor()
+		return me
+	end function
+
+	State.on = function(event, callback)
+		me = self
+		me.events.on(event, @callback)
+		return me
+	end function
+
+	State.set = function(stype, argMap)
+		me = self
+
+		me.previousStates.push(me.state)
+		me.state = stype
+
+		if (argMap) then
+			me.events.emit(stype, me, argMap)
+		else
+			me.events.emit(stype, me)
+		end if
+	end function
+
+	State.has = function(path)
+		me = self
+		handle = me.getItem(path)
+		return handle != null
+	end function
+
+	State.setItem = function(path, value)
+		if (typeof(path) == "string") then path = path.split(".")
+		me = self
+		current = me.store
+		last = path.pop()
+
+		for item in path
+			if (typeof(current) != "map") then
+				return me
+			end if
+
+			if (current.hasIndex(item)) then
+				current = current[item]
+			else
+				return me
+			end if
+		end for
+
+		current[last] = value
+		return me
+	end function
+
+	State.getItem = function(path, defaultValue)
+		if (typeof(path) == "string") then path = path.split(".")
+		me = self
+		current = me.store
+
+		for item in path
+			if (typeof(current) != "map") then
+				return defaultValue
+			end if
+
+			if (current.hasIndex(item)) then
+				current = current[item]
+			else
+				return defaultValue
+			end if
+		end for
+
+		return current
+	end function
+
+	State.back = function()
+		me = self
+		me.state = me.previousStates.pop()
+		me.events.emit(me.state, me)
+	end function
+
+	return State
+end function
+
+injector.def("state", ["eventEmitter"], @stateModule)

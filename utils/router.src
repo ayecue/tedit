@@ -1,0 +1,127 @@
+routerModule = function()	
+	Router = {}
+
+	Router.State = State
+
+	Router.constructor = function()
+		me = self
+
+		me.paths = {}
+		me.args = {}
+		me.current = null
+
+		return me
+	end function
+
+	Router.register = function(path, callback)
+		me = self
+
+		if (me.paths.hasIndex(path)) then
+			print("Path <b>" + path + "</b> already registered.")
+			return me
+		end if
+
+		me.paths[path] = @callback
+		return me
+	end function
+
+	Router.hasParams = function(path, args)
+		me = self
+
+		if (not me.args.hasIndex(path)) then
+			return false
+		end if
+
+		for param in args
+			if (not me.args[path].map.hasIndex(param)) then
+				return false
+			end if
+		end for
+
+		return true
+	end function
+
+	Router.getParams = function(path)
+		me = self
+
+		if (not me.args.hasIndex(path)) then
+			return false
+		end if
+
+		return me.args[path]
+	end function
+
+	Router.insertParams = function(path, args)
+		me = self
+		argsObj = {"classID":"params","map":{}}
+		argsObj.get = function(path, defaultValue)
+			if (typeof(path) == "string") then path = path.split(".")
+			me = self
+			current = me.map
+
+			for item in path
+				if (typeof(current) != "map") then
+					return defaultValue
+				end if
+
+				if (current.hasIndex(item)) then
+					current = current[item]
+				else
+					return defaultValue
+				end if
+			end for
+
+			return current
+		end function
+
+		if (me.args.hasIndex(path)) then
+			for item in me.args[path].map
+				argsObj.map[item.key] = item.value
+			end for
+		end if
+
+		for item in args
+			argsObj.map[item.key] = item.value
+		end for
+
+		me.args[path] = argsObj
+
+		return me
+	end function
+
+	Router.flushParams = function(path)
+		me = self
+
+		if (not me.args.hasIndex(path)) then
+			return me
+		end if
+
+		me.args.remove(path)
+
+		return me
+	end function
+
+	Router.route = function(path, args)
+		if (args == null) then args = {}
+
+		me = self
+
+		if (not me.paths.hasIndex(path)) then
+			print("Path <b>" + path + "</b> does not exist.")
+			return me
+		end if
+
+		callback = @me.paths[path]
+		
+		me.insertParams(path, args)
+		me.current = path
+
+		callback(me.args[path])
+
+		return me
+	end function
+
+	return Router
+end function
+
+injector.def("router", @routerModule)

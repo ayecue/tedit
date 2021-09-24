@@ -1,0 +1,142 @@
+argvModule = function()
+	ArgType = {}
+
+	ArgType.FLAG = "FLAG"
+	ArgType.VALUE = "VALUE"
+
+	Arg = {}
+
+	Arg.constructor = function(shortcut, command, type, description)
+		me = self
+		me.shortcut = shortcut
+		me.command = command
+		me.type = type
+		me.description = description
+		return self
+	end function
+
+	Arg.toString = function()
+		me = self
+		return "-" + me.shortcut + " --" + me.command + " - <b>" + me.description + "</b>"
+	end function
+
+	Argv = {}
+
+	Argv.ArgType = @ArgType
+	Argv.Arg = @Arg
+
+	Argv.constructor = function(defs, help)
+		me = self
+		me.args = params
+		me.listed = {}
+		me.unlisted = params
+		me.defs = defs
+		me.help = help
+		return self
+	end function
+
+	Argv.parse = function()
+		me = self
+		args = me.args
+		defs = me.defs
+		listed = {}
+		unlisted = []
+		index = 0
+		maxIndex = args.len
+		findDef = function(arg)
+			for def in defs
+				if ("--" + def.command == arg or "-" + def.shortcut == arg) then
+					return def
+				end if
+			end for
+			return null
+		end function
+		isWrapped = function(x)
+			return x[0] == "'"
+		end function
+		getItemsInWrap = function(start)
+			i = start
+			r = []
+			while i < maxIndex
+				x = args[i].trim()
+				if (x != "" and x[-1] == "'") then
+					r.push(x[:x.len - 1])
+					return r
+				end if
+				r.push(x)
+				i = i + 1
+			end while
+			return r
+		end function
+		
+		while index < maxIndex
+			item = args[index].trim()
+			if (item == "") then
+				index = index + 1
+				continue
+			end if
+			def = findDef(item)
+			if (def == null) then
+				if (isWrapped(item)) then
+					if (item[-1] == "'") then
+						item = item[1:item.len - 1]
+					else
+						wrappedItems = getItemsInWrap(index + 1)
+						item = [item[1:], wrappedItems.join(" ")].join(" ")
+						index = index + wrappedItems.len
+					end if
+				end if
+				unlisted.push(item)
+			else
+				if (def.type == me.ArgType.VALUE) then
+					index = index + 1
+					value = args[index]
+					if (isWrapped(value)) then
+						wrappedItems = getItemsInWrap(index + 1)
+						value = [value[1:], wrappedItems.join(" ")].join(" ")
+						index = index + wrappedItems.len
+					end if
+					listed[def.command] = value
+				else if (def.type == me.ArgType.FLAG) then
+					listed[def.command] = true
+				end if
+			end if
+			index = index + 1
+		end while
+		
+		me.listed = listed
+		me.unlisted = unlisted
+		
+		return me
+	end function
+
+	Argv.get = function(index = 0, mandatory = false)
+		me = self
+		if not me.hasIndex("unlisted") then
+			me.unlisted = params
+		end if
+		if not me.hasIndex("help") or me.help == null then
+			me.help = "n/a"
+		end if
+		if me.unlisted.hasIndex(index) then
+			return me.unlisted[index]
+		end if
+		if mandatory then
+			exit("Error cannot find param[" + index + "]" + char(10) + char(10) + me.help)
+		end if
+		return null
+	end function
+
+	Argv.getWithKey = function(key)
+		me = self
+		if me.listed.hasIndex(key) then
+			return me.listed[key]
+		end if
+		return null
+	end function
+
+	return Argv
+end function
+
+injector.def("argv", @argvModule)
+

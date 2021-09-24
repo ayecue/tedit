@@ -1,0 +1,325 @@
+lexerModule = function()
+	Lexer = {}
+
+	Lexer.fallthrough = [45, 43, 42, 47, 46, 94, 37, 44, 123, 125, 91, 93, 40, 41, 64]
+	Lexer.keywords = ["if", "in", "or", "and", "end", "for", "not", "new", "else", "then", "break", "while", "return", "function", "continue"]
+	Lexer.constructor = function(content)
+		me = self
+
+		me.content = content
+		me.length = content.len
+		me.index = 0
+		me.token = null
+		me.tokenStart = null
+		me.line = 1
+		me.lineStart = 0
+		me.status = {"errors":[]}
+		me.isNewLine = true
+
+		return me
+	end function
+
+	Lexer.isNotEOF = function()
+		me = self
+		return me.index < me.length
+	end function
+
+	Lexer.nextIndex = function(value)
+		if (value == null) then value = 1
+		me = self
+		me.index = me.index + value
+		return me.index
+	end function
+
+	Lexer.codeAt = function(offset)
+		if (offset == null) then offset = 0
+		me = self
+		nextIndex = me.index + offset
+		if (me.content.len <= nextIndex) then return null
+		return me.content[nextIndex].code
+	end function
+
+	Lexer.nextLine = function()
+		me = self
+		me.line = me.line + 1
+		return me.line
+	end function
+
+	Lexer.isStringEscaped = function()
+		return 34 == self.codeAt(1)
+	end function
+
+	Lexer.scanStringLiteral = function()
+		me = self
+		beginLine = me.line
+		beginLineStart = me.lineStart
+		stringStart = me.index + 1
+		string = ""
+		code
+
+		while (true)
+			me.nextIndex()
+			code = me.codeAt()
+			if (34 == code) then
+				if (me.isStringEscaped()) then
+					me.nextIndex()
+				else
+					break
+				end if
+			end if
+			if (not me.isNotEOF()) then
+				me.raise("Unexpected string ending on line " + beginLine)
+				return null
+			end if
+		end while
+
+		me.nextIndex()
+
+		string = me.content[stringStart: me.index - 1]
+		if (string == null) then string = ""
+		if (string.len > 0) then
+			string = string.replace(char(34) + char(34), char(34))
+		end if
+
+		return { "type": "str", "value": string, "line": beginLine, "lineStart": beginLineStart, "lastLine": me.line, "lastLineStart": me.lineStart, "range": [me.tokenStart, me.index]}
+	end function
+
+	Lexer.readDecLiteral = function()
+		me = self
+		isDec = function(a)
+			return a >= 48 and a <= 57
+		end function
+
+		while (isDec(me.codeAt())) 
+			me.nextIndex()
+		end while
+
+		foundFraction = false
+		if (46 == me.codeAt()) then
+			foundFraction = true
+			me.nextIndex()
+			while (isDec(me.codeAt())) 
+				me.nextIndex()
+			end while
+		end if
+
+		notation = me.codeAt()
+		if (101 == notation or 69 == notation) then
+			me.nextIndex()
+			operation = me.codeAt()
+			if (45 == operation or 45 == operation) then me.nextIndex()
+			while (isDec(me.codeAt())) 
+				me.nextIndex()
+			end while
+		end if
+
+		return {"value": me.content[me.tokenStart: me.index].val(), "hasFractionPart": foundFraction}
+	end function
+
+	Lexer.scanNumericLiteral = function()
+		me = self
+	    literal = me.readDecLiteral()
+	    return {"type": "num", "value": literal.value, "line": me.line, "lineStart": me.lineStart, "range": [me.tokenStart, me.index]}
+	end function
+
+	Lexer.scanPunctuator = function(value)
+		me = self
+		me.index = me.index + value.len
+		return {"type": "punc", "value": value, "line": me.line, "lineStart": me.lineStart, "range": [me.tokenStart, me.index]}
+	end function
+
+	Lexer.scanSliceOperator = function(value)
+		me = self
+		me.index = me.index + 1
+		return {"type": "slice", "value": ":", "line": me.line, "lineStart": me.lineStart, "range": [me.tokenStart, me.index]}
+	end function
+
+	Lexer.scanWhiteSpace = function()
+		me = self
+		content = ""
+		beginLine = me.line
+		beginLineStart = me.lineStart
+
+		while (me.isNotEOF())
+			code = me.codeAt()
+
+			if (code == 32 or code == 9) then
+				if (code == 32) then
+					content = content + me.content[me.index]
+				end if
+
+				me.nextIndex()
+			else
+				break
+			end if
+		end while
+
+		if (content.len == 0) then
+			return null
+		end if
+
+		return {"type": "whtspc", "value": content, "line": beginLine, "lineStart": beginLineStart, "lastLine": me.line, "lastLineStart": me.lineStart, "range": [me.tokenStart, me.index]}
+	end function
+
+	Lexer.scanIdentifierOrKeyword = function()
+		me = self
+		isIdfPrt = function(code)
+			return (code >= 65 and code <= 90) or (code >= 97 and code <= 122) or 95 == code or (code >= 48 and code <= 57) or code >= 128
+		end function
+
+		me.nextIndex()
+
+		while (isIdfPrt(me.codeAt()))
+			me.nextIndex()
+		end while
+
+		value = me.content[me.tokenStart: me.index]
+		type = null
+
+		if (me.keywords.indexOf(value) != null) then
+			type = "kwd"
+
+			if ("end" == value) then
+				me.nextIndex()
+
+				while (isIdfPrt(me.codeAt()))
+					me.nextIndex()
+				end while
+				value = me.content[me.tokenStart: me.index]
+			else if ("else" == value) then
+				elseIfStatement = me.content[me.tokenStart: me.index + 3]
+				if ("else if" == elseIfStatement) then
+					me.nextIndex(3)
+					value = elseIfStatement
+				end if
+			end if
+	    else if ("true" == value or "false" == value) then
+			type = "bool"
+			value = ("true" == value)
+	    else if ("null" == value) then
+			type = "nil"
+			value = null
+	    else
+	      type = "idtf"
+	    end if
+
+	    return {"type": type, "value": value, "line": me.line, "lineStart": me.lineStart, "range": [me.tokenStart, me.index]}
+	end function
+
+	Lexer.scanComment = function()
+		me = self
+		content = ""
+		beginLine = me.line
+		beginLineStart = me.lineStart
+
+		while (me.isNotEOF())
+			tokenCode = me.codeAt()
+			if (tokenCode == 10 or tokenCode == 13) then
+				break
+			end if
+			content = content + me.content[me.index]
+			me.nextIndex()
+		end while
+
+		return {"type": "cmt", "value": content, "line": beginLine, "lineStart": beginLineStart, "lastLine": me.line, "lastLineStart": me.lineStart, "range": [me.tokenStart, me.index]}
+	end function
+
+	Lexer.next = function()
+		debug("lexer.next")
+		me = self
+
+		if (me.hasError()) then
+			return {"type" : "eof", "value": "<eof>", "line": me.line}
+		end if
+
+		me.tokenStart = me.index
+
+		if (not me.isNotEOF()) then
+			return {"type" : "eof", "value": "<eof>", "line": me.line, "lineStart": me.lineStart, "range": [me.index, me.index]}
+		end if
+
+		if (me.isNewLine) then
+			me.isNewLine = false
+			return {"type" : "nol", "value": "<nol>", "line": me.line, "lineStart": me.lineStart, "range": [me.index, me.index]}
+		end if
+
+		whitespaceToken = me.scanWhiteSpace()
+
+		if (whitespaceToken != null) then
+			return whitespaceToken
+		end if
+
+		if (me.codeAt() == 47 and me.codeAt(1) == 47) then
+			return me.scanComment()
+		end if
+
+		code = me.codeAt()
+		nextCode = me.codeAt(1)
+
+		me.tokenStart = me.index
+
+		if (code == 10 or code == 13 or code == 59) then
+			if (10 == code and 13 == nextCode) then me.nextIndex()
+			if (13 == code and 10 == nextCode) then me.nextIndex()
+
+			token = { "type": "eol", "value": ";", "line": me.line, "lineStart": me.lineStart, "range": [me.tokenStart, me.index]}
+
+			me.nextLine()
+			me.lineStart = me.nextIndex()
+			me.isNewLine = true
+
+			return token
+		end if
+
+		if ((code >= 65 and code <= 90) or (code >= 97 and code <= 122) or 95 == code or code >= 128 or code == 35) then return me.scanIdentifierOrKeyword();
+
+		if (code == 34) then 
+			return me.scanStringLiteral()
+		else if (code == 61) then
+			if (nextCode == 61) then
+				return me.scanPunctuator("==")
+			end if
+			return me.scanPunctuator("=")
+		else if (code == 60) then
+			if (nextCode == 61) then 
+				return me.scanPunctuator("<=")
+			end if
+			return me.scanPunctuator("<")
+		else if (code == 62) then
+			if (nextCode == 61) then
+				return me.scanPunctuator(">=")
+			end if
+			return me.scanPunctuator(">")
+		else if (code == 33 and nextCode == 61) then
+			return me.scanPunctuator("!=")
+		else if (code >= 48 and code <= 57) then
+			return me.scanNumericLiteral()
+		else if (code == 58) then
+			return me.scanSliceOperator()
+		else if (me.fallthrough.indexOf(code) != null) then
+			return me.scanPunctuator(char(code))
+		end if
+
+		me.raise("Invalid char " + code + ":" + char(code))
+	end function
+
+	Lexer.hasError = function()
+		return self.status.errors.len > 0
+	end function
+
+	Lexer.getErrors = function()
+		return self.status.errors
+	end function
+
+	Lexer.raise = function(message)
+		me = self
+		errMessage = "[Lexer] Error: " + message
+		debug(errMessage)
+		me.status.errors.push(errMessage)
+		return null
+	end function
+
+	return Lexer
+end function
+
+injector.def("lexer", @lexerModule)

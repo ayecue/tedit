@@ -1,0 +1,98 @@
+import_code("/root/utils/injector.src":"./utils/injector.src")
+import_code("/root/utils/argv.src":"./utils/argv.src")
+import_code("/root/utils/loadLib.src":"./utils/loadLib.src")
+import_code("/root/utils/lexer.src":"./utils/lexer.src")
+import_code("/root/utils/highlighter.src":"./utils/highlighter.src")
+import_code("/root/utils/parser.src":"./utils/parser.src")
+import_code("/root/utils/eventEmitter.src":"./utils/eventEmitter.src")
+import_code("/root/utils/state.src":"./utils/state.src")
+import_code("/root/utils/localConfig.src":"./utils/localConfig.src")
+import_code("/root/utils/enrichedUserInput.src":"./utils/enrichedUserInput.src")
+import_code("/root/utils/router.src":"./utils/router.src")
+import_code("/root/utils/uploader.src":"./utils/uploader.src")
+import_code("/root/utils/vimLexer.src":"./utils/vimLexer.src")
+import_code("/root/utils/basicEditor.src":"./utils/basicEditor.src")
+import_code("/root/utils/codeEditorPlugin.src":"./utils/codeEditorPlugin.src")
+
+toolkit = injector.get("toolkit")
+Uploader = injector.get("uploader")
+State = injector.get("state")
+EnrichedUserInput = injector.get("enrichedUserInput")
+Router = injector.get("router")
+LocalConfig = injector.get("localConfig")
+Highlighter = injector.get("highlighter")
+
+parseArgs = function()
+	Argv = injector.get("argv")
+	
+	argDefinitions = []
+	
+	argDefinitions.push((new Argv.Arg).constructor("h", "help", Argv.ArgType.FLAG, "Print help"))
+	
+	helpBlock = []
+	
+	helpBlock.push("TEdit CLI")
+	helpBlock.push("Example: <b>tedit file</b>")
+	helpBlock.push("")
+	
+	for argDefinition in argDefinitions
+		helpBlock.push(argDefinition.toString())
+	end for
+	
+	help = helpBlock.join(char(10))
+	
+	argv = (new Argv).constructor(argDefinitions, help)
+	
+	argv.parse()
+	
+	return argv
+end function
+
+openEditor = function(file)
+	BasicEditor = injector.get("basicEditor")
+	editorPlugins = []
+
+	if (typeof(file) == "File") then
+		file = file.path
+	end if
+
+	foundSupport = false
+
+	for editorPlugin in editorPlugins
+		if (editorPlugin.supports(file)) then
+			editorPlugin.open()
+			foundSupport = true
+			break
+		end if
+	end for
+	
+	if (not foundSupport) then
+		defaultEditor = (new BasicEditor).constructor(file, localComputer)
+		defaultEditor.open()
+	end if
+end function
+
+argv = parseArgs()
+
+if (argv.getWithKey("help") == true) then
+	exit(help)
+end if
+
+globals.config = (new LocalConfig).constructor(get_shell.host_computer, "/tedit.cfg")
+globals.targetFile = argv.get(0, true)
+globals.appRouter = (new Router).constructor()
+
+config.setDefault({
+
+})
+
+localShell = get_shell
+localComputer = get_shell.host_computer
+
+onMain = function(args, stdin)
+	openEditor(targetFile)
+end function
+
+appRouter.register("main", @onMain)
+
+appRouter.route("main")

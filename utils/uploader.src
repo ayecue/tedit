@@ -1,0 +1,67 @@
+uploaderModule = function(deps)
+	EventEmitter = deps[0]
+	Uploader = {}
+
+	Uploader.EventEmitter = EventEmitter
+
+	Uploader.constructor = function(sourceShell, targetShell)
+		me = self
+		me.sourceShell = sourceShell
+		me.targetShell = targetShell
+		me.queue = []
+		me.errors = []
+		me.events = (new me.EventEmitter).constructor()
+		return me
+	end function
+
+	Uploader.add = function(sourcePath, targetPath)
+		me = self
+		sourceFile = me.sourceShell.File(sourcePath)
+
+		if (not sourceFile) then
+			err = {"classID":"UploadError","message":"File does not exist."}
+			me.events.emit("error", err)
+			me.errors.push(err)
+			return me
+		end if
+
+		me.queue.push({"classID":"UploadQueueItem","sourceFile":sourceFile,"source":sourcePath,"target":targetPath,"success":false})
+		return me
+	end function
+
+	Uploader.commit = function()
+		me = self
+
+		for queueItem in me.queue
+			me.events.emit("pre-commit", queueItem)
+			result = me.sourceShell.scp(queueItem.source, queueItem.target, me.targetShell)
+			me.events.emit("post-commit", queueItem)
+
+			if (typeof(result) == "string") then
+				err = {"classID":"UploadError","message":result}
+				me.events.emit("error", err)
+				me.errors.push(err)
+			else
+				queueItem.success = true
+			end if
+		end for
+
+		return me
+	end function
+
+	Uploader.succeeded = function(sourcePath, targetPath)
+		me = self
+
+		for queueItem in me.queue
+			if (sourcePath == queueItem.source and targetPath == queueItem.target) then
+				return queueItem.success
+			end if
+		end for
+
+		return false
+	end function
+
+	return Uploader
+end function
+
+injector.def("uploader", ["eventEmitter"], @uploaderModule)

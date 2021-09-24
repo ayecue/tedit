@@ -1,0 +1,43 @@
+eventEmitterModule = function()
+	EventEmitter = {}
+
+	EventEmitter.constructor = function()
+		me = self
+		me.listener = {}
+		return me
+	end function
+
+	EventEmitter.emit = function(event, arg1, arg2)
+		me = self
+		if (me.listener.hasIndex(event)) then
+			for callback in @me.listener[event]
+				result = null
+				if (arg2) then
+					result = callback(arg1, arg2)
+				else
+					result = callback(arg1)
+				end if
+				if (result == null) then continue
+				if (result.hasIndex("stop") and result.stop) then break
+			end for
+		end if
+		return me
+	end function
+
+	EventEmitter.on = function(event, cb)
+		me = self
+		if (not me.listener.hasIndex(event)) then
+			me.listener[event] = []
+		end if
+		me.listener[event].push(@cb)
+		return me
+	end function
+
+	EventEmitter.has = function(event)
+		return self.listener.hasIndex(event)
+	end function
+
+	return EventEmitter
+end function
+
+injector.def("eventEmitter", @eventEmitterModule)

@@ -1,0 +1,152 @@
+vimLexerModule = function()
+	Lexer = {}
+
+	Lexer.constructor = function(content)
+		me = self
+
+		me.content = content
+		me.length = content.len
+		me.index = 0
+		me.token = null
+		me.tokenStart = null
+		me.status = {"errors":[]}
+
+		return me
+	end function
+
+	Lexer.isNotEOF = function()
+		me = self
+		return me.index < me.length
+	end function
+
+	Lexer.nextIndex = function(value)
+		if (value == null) then value = 1
+		me = self
+		me.index = me.index + value
+		return me.index
+	end function
+
+	Lexer.codeAt = function(offset)
+		if (offset == null) then offset = 0
+		me = self
+		nextIndex = me.index + offset
+		if (me.content.len <= nextIndex) then return null
+		return me.content[nextIndex].code
+	end function
+
+	Lexer.nextLine = function()
+		me = self
+		me.line = me.line + 1
+		return me.line
+	end function
+
+	Lexer.isStringEscaped = function()
+		return 34 == self.codeAt(1)
+	end function
+
+	Lexer.readDecLiteral = function()
+		me = self
+		isDec = function(a)
+			return a >= 48 and a <= 57
+		end function
+
+		while (isDec(me.codeAt())) 
+			me.nextIndex()
+		end while
+
+		operation = me.codeAt()
+		if (45 == operation or 45 == operation) then me.nextIndex()
+		while (isDec(me.codeAt())) 
+			me.nextIndex()
+		end while
+
+		return {"value": me.content[me.tokenStart: me.index].val()}
+	end function
+
+	Lexer.scanNumericLiteral = function()
+		me = self
+	    literal = me.readDecLiteral()
+	    return {"type": "numeric", "value": literal.value}
+	end function
+
+	Lexer.skipWhiteSpace = function()
+		me = self
+
+		while (me.isNotEOF())
+			code = me.codeAt()
+
+			if (code == 32 or code == 9) then
+				me.nextIndex()
+			else
+				break
+			end if
+		end while
+	end function
+
+	Lexer.scanIdentifierOrKeyword = function()
+		me = self
+		isIdfPrt = function(code)
+			return (code >= 65 and code <= 90) or (code >= 97 and code <= 122) or 95 == code or (code >= 48 and code <= 57) or code >= 128
+		end function
+
+		me.nextIndex()
+
+		while (isIdfPrt(me.codeAt()))
+			me.nextIndex()
+		end while
+
+	    return {"type": "identifier", "value": me.content[me.tokenStart: me.index]}
+	end function
+
+	Lexer.next = function()
+		debug("lexer.next")
+		me = self
+
+		if (me.hasError()) then
+			return {"type" : "eof", "value": "<eof>"}
+		end if
+
+		if (not me.isNotEOF()) then
+			return {"type" : "eof", "value": "<eof>"}
+		end if
+
+		me.skipWhiteSpace()
+
+		code = me.codeAt()
+		nextCode = me.codeAt(1)
+
+		me.tokenStart = me.index
+
+		if ((code >= 65 and code <= 90) or (code >= 97 and code <= 122) or 95 == code or code >= 128 or code == 35) then
+			return me.scanIdentifierOrKeyword()
+		else if (code >= 48 and code <= 57) then
+			return me.scanNumericLiteral()
+		else if (code == 33) then
+			return {"type" : "force", "value": true}
+		else if (code == 58) then
+			return {"type" : "colon", "value": true}
+		end if
+
+		me.raise("Invalid char " + code + ":" + char(code))
+	end function
+
+	Lexer.hasError = function()
+		return self.status.errors.len > 0
+	end function
+
+	Lexer.getErrors = function()
+		return self.status.errors
+	end function
+
+	Lexer.raise = function(message)
+		me = self
+		errMessage = "[Lexer] Error: " + message
+		debug(errMessage)
+		me.status.errors.push(errMessage)
+		return null
+	end function
+
+	return Lexer
+end function
+
+injector.def("vimLexer", @vimLexerModule)

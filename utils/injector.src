@@ -1,0 +1,172 @@
+globals.debug = function(str)
+	if (false) then print(str)
+	return null
+end function
+
+injectorModule = function()
+	DependencyInjector = {}
+	DependencyInjector.constructor = function(scope)
+		if (scope == null) then scope = {}
+		
+		me = self
+		me.scope = {}
+		
+		return me
+	end function
+
+	DependencyInjector.set = function(namespace, module, override)
+		me = self
+		
+		if (typeof(namespace) != "string") then
+			return "[Error] Unexpected type for namespace. Namespace needs to be a string."
+		else if (me.scope.hasIndex(namespace) and not override) then
+			return "[Error] " + namespace + " is aready defined."
+		end if
+		
+		me.scope[namespace] = @module
+		
+		return me
+	end function
+
+	DependencyInjector.get = function(namespace)
+		me = self
+		
+		if (typeof(namespace) != "string") then
+			return "[Error] Unexpected type for namespace. Namespace needs to be a string."
+		else if (not me.scope.hasIndex(namespace)) then
+			return "[Error] " + namespace + " not found.."
+		end if
+		
+		return @me.loadDef(me.scope[namespace])
+	end function
+
+	DependencyInjector.def = function(namespace, dependencies, definition)
+		me = self
+		
+		if (typeof(@dependencies) == "function") then
+			definition = @dependencies
+			dependencies = []
+		end if
+		
+		me.set(namespace, {"classID":"module","name":namespace,"deps":dependencies,"def":@definition})
+		
+		return me
+	end function
+
+	DependencyInjector.evalDef = function(definition)
+		me = self
+		
+		if (typeof(@definition) != "module") then
+			return @definition
+		end if
+		
+		args = []
+		
+		for depNamespace in definition.deps
+			depDef = @me.get(depNamespace)
+			
+			if (typeof(@depDef) == "module") then
+				print("[WARNING] Definition " + depNamespace + " is not initialized.")
+			end if
+			
+			args.push(@depDef)
+		end for
+		
+		completed = null
+		if (args.len == 0) then
+			completed = definition.def()
+		else
+			completed = definition.def(args)
+		end if
+		me.set(definition.name, @completed, true)
+		print("Injected <b>" + definition.name + "</b> ...")
+		
+		return @completed
+	end function
+
+	DependencyInjector.loadDef = function(definition, excludes)
+		if (typeof(@definition) != "module") then
+			return @definition
+		end if
+		if (excludes == null) then excludes = []
+		
+		me = self
+		excludes = excludes
+		excludes.push(definition)
+		sortedDefinitions = []
+		
+		for depNamespace in definition.deps
+			depDef = @me.get(depNamespace)
+			
+			if (typeof(@depDef) != "module") then
+				continue
+			else if (depDef.deps.indexOf(depNamespace) != null) then
+				print("[ERROR] Cyclic dependency in " + definition.name + " and " + depNamespace + ".")
+				continue
+			else if (excludes.indexOf({ "name": depNamespace }) != null) then
+				continue
+			end if
+			
+			result = me.loadDef(depDef, excludes)
+			sortedDefinitions = sortedDefinitions + result
+		end for
+		
+		return me.evalDef(definition)
+	end function
+
+	DependencyInjector.load = function()
+		me = self
+		existingNamespaces = me.scope.indexes
+		namespaces = []
+		
+		for namespace in existingNamespaces
+			if (typeof(@namespace) == "module") then
+				namespaces.push(namespace)
+			end if
+		end for
+		
+		sortedNamespaces = []
+		queue = function(x, collection, sortedNamespaces)
+			result = [];
+			
+			for namespace in collection
+				isRequired = false
+				
+				for m in collection
+					if (m != namespace and x.get(m).deps.indexOf(namespace) != null) then
+						if (get(namespace).deps.indexOf(m) != null) then
+							break
+						end if
+						
+						isRequired = true
+						break
+					end if
+				end for
+				
+				if (isRequired) then
+					result.push(namespace)
+				else
+					sortedNamespaces = [namespace] + sortedNamespaces
+				end if
+			end for
+			
+			return result
+		end function
+		
+		while (namespaces.length > 0)
+			namespaces = queue(me, namespaces, sortedNamespaces)
+		end while
+		
+		for namespace in sortedNamespaces
+			def = @me.get(namespace)
+			
+			me.evalDef(@def)
+		end for
+		
+		return me
+	end function
+
+	return (new DependencyInjector).constructor()
+end function
+
+globals.injector = injectorModule()
