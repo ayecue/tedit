@@ -30,7 +30,9 @@ basicEditorModule = function(deps)
 		me.lines = parsedFile.get_content.split(char(10))
 		me.config = {
 			"line-position-color": "yellow",
-			"cursor-position-color": "yellow"
+			"cursor-position-color": "yellow",
+			"actions-display-mode": "all",
+			"visible-lines": 20
 		}
 
 		me.state.events.on("interact", @me.onInteract)
@@ -150,6 +152,9 @@ basicEditorModule = function(deps)
 
 		if (mode == me.getModes().visual) then
 			me.visualInteract()
+		else if (mode == me.getModes().insert) then
+			//needs to be implemented
+			//me.insertInteract()
 		end if
 	end function
 
@@ -187,11 +192,26 @@ basicEditorModule = function(deps)
 		}
 	end function
 
+	BasicEditor.renderActions = function(cmds)
+		me = self
+		actionDisplayMode = me.config["actions-display-mode"]
+
+		if (actionDisplayMode == "all") then
+			print("<b>Actions:</b> ")
+			for cmdItem in cmds
+				print(char(9) + cmdItem.key + " - " + cmdItem.value)
+			end for
+		else if (actionDisplayMode == "light") then
+			print("Actions: " + cmdItem.indexes.join(", "))
+		end if 
+	end function
+
 	BasicEditor.visualInteract = function()
 		me = self
 		cmds = me.getDisplayCmds()
 
-		print("<b>Actions:</b> " + cmds.indexes.join(", "))
+		me.renderActions(cmds)
+
 		response = me.enrichedUserInput.prompt(char(10) + "> ")
 		vimCmd = me.parseCmdInput(response.raw)
 
@@ -230,6 +250,10 @@ basicEditorModule = function(deps)
 			if (value == null) then value = 1;
 
 			me.setPosition(cursorLine + value, cursorOffset)
+		else if (command == "appendAbove") then
+			//todo
+		else
+			print("<color=red>Command is not yet implemented</color>")
 		end if
 	end function
 
@@ -306,23 +330,43 @@ basicEditorModule = function(deps)
 
 	BasicEditor.render = function()
 		me = self
-		index = 0
+		modes = me.getModes()
 		lines = me.lines
-		numberWidth = str(lines.len).len
+		linesLength = lines.len
+		numberWidth = str(linesLength).len
+		visibleLines = me.config["visible-lines"]
+		cursorLine = me.state.getItem("cursor-line")
+		startLine = cursorLine - (visibleLines / 2)
+		endLine = cursorLine + (visibleLines / 2)
+		currentMode = me.state.getItem("mode")
 
+		//todo need to implement insert mode
+
+		if (startLine < 0) then
+			startLine = 0
+		end if
+
+		if (endLine > linesLength) then
+			endLine = linesLength
+		end if
+
+		wait(0.1)
 		clear_screen
 		wait(0.1)
 
 		print("<b><u>tedit</u></b>")
 
-		for line in lines
+		index = startLine
+
+		while (index < endLine)
+			line = lines[index]
 			output = me.prepareLineNumber(index, numberWidth)
 			output = output + me.prepareLine(line, index)
 
 			print(output)
 
 			index = index + 1
-		end for
+		end while
 
 		return null
 	end function
