@@ -86,6 +86,7 @@ openEditor = function(file)
 
 		if (command == "switchPlugin") then
 			editor = showPlugins()
+			activeEditor.saveQuit()
 			activeEditor = (new editor).constructor(file, localShell, config)
 			activeEditor.open()
 		else
