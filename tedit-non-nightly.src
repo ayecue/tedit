@@ -1,0 +1,141 @@
+#include ./utils/injector;
+#include ./utils/inherits;
+#include ./utils/argv;
+#include ./utils/loadLib;
+#include ./utils/lexer;
+#include ./utils/highlighter;
+#include ./utils/parser;
+#include ./utils/eventEmitter;
+#include ./utils/state;
+#include ./utils/localConfig;
+#include ./utils/enrichedUserInput;
+#include ./utils/router;
+#include ./utils/uploader;
+#include ./utils/vimLexer;
+#include ./utils/basicEditor;
+#include ./utils/codeEditorPlugin;
+
+Uploader = injector.get("uploader")
+State = injector.get("state")
+EnrichedUserInput = injector.get("enrichedUserInput")
+Router = injector.get("router")
+LocalConfig = injector.get("localConfig")
+Highlighter = injector.get("highlighter")
+BasicEditor = injector.get("basicEditor")
+
+parseArgs = function()
+	Argv = injector.get("argv")
+	
+	argDefinitions = []
+	
+	argDefinitions.push((new Argv.Arg).constructor("h", "help", Argv.ArgType.FLAG, "Print help"))
+	
+	helpBlock = []
+	
+	helpBlock.push("TEdit CLI")
+	helpBlock.push("Example: <b>tedit file</b>")
+	helpBlock.push("")
+	
+	for argDefinition in argDefinitions
+		helpBlock.push(argDefinition.toString())
+	end for
+	
+	help = helpBlock.join(char(10))
+	
+	argv = (new Argv).constructor(argDefinitions, help)
+	
+	argv.parse()
+	
+	return argv
+end function
+
+showPlugins = function()
+	availableEditors = [BasicEditor] + editorPlugins
+	index = 0
+
+	print("<b><u>Available editors</u></b>")
+
+	for availableEditor in availableEditors
+		print(char(9) + "(" + index + ") <b>" + availableEditor.name + "</b>")
+		print((char(9) * 2) + availableEditor.description)
+		index = index + 1
+	end for
+
+	pluginIndex = EnrichedUserInput.prompt(char(10) + "Select plugin:" + char(10) + "> ")
+	pluginIndex = pluginIndex.raw.val
+
+	if (availableEditors.hasIndex(pluginIndex)) then
+		return availableEditors[pluginIndex]
+	else
+		clear_screen
+		print("<color=red>Invalid choice</color>")
+		showPlugins()
+	end if
+end function
+
+openEditor = function(file)
+	//custom menus
+	BasicEditor.getCustomMainCmds = function()
+		return {
+			":plugin": "switchPlugin"
+		}
+	end function
+
+	BasicEditor.mainCustomInteractEval = function(command, value)
+		me = self
+
+		if (command == "switchPlugin") then
+			editor = showPlugins()
+			activeEditor.saveQuit()
+			activeEditor = (new editor).constructor(file, localShell, config)
+			activeEditor.open()
+		else
+			me.exception("<color=red>Command is not yet implemented</color>")
+		end if
+	end function
+
+	//plugins
+	editorPlugins.push(injector.get("codeEditorPlugin"))
+
+	//init
+	if (typeof(file) == "file") then
+		file = file.path
+	end if
+
+	foundSupport = false
+
+	for EditorPlugin in editorPlugins
+		if (EditorPlugin.supports(file)) then
+			activeEditor = (new EditorPlugin).constructor(file, localShell, config)
+			activeEditor.open()
+			foundSupport = true
+			break
+		end if
+	end for
+	
+	if (not foundSupport) then
+		activeEditor = (new BasicEditor).constructor(file, localShell, config)
+		activeEditor.open()
+	end if
+end function
+
+argv = parseArgs()
+
+if (argv.getWithKey("help") == true) then
+	exit(help)
+end if
+
+globals.activeEditor = null
+globals.editorPlugins = []
+globals.config = (new LocalConfig).constructor(get_shell.host_computer, "/tedit.cfg")
+globals.targetFile = argv.get(0, true)
+globals.appRouter = (new Router).constructor()
+globals.localShell = get_shell
+
+onMain = function(args, stdin)
+	openEditor(targetFile)
+end function
+
+appRouter.register("main", @onMain)
+
+appRouter.route("main")
