@@ -258,6 +258,10 @@ lexerModule = function()
 
 		me.tokenStart = me.index
 
+		if (code == null) then
+			return { "type": "eol", "value": ";", "line": me.line, "lineStart": me.lineStart, "range": [me.tokenStart, me.index]}
+		end if
+
 		if (code == 10 or code == 13 or code == 59) then
 			if (10 == code and 13 == nextCode) then me.nextIndex()
 			if (13 == code and 10 == nextCode) then me.nextIndex()

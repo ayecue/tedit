@@ -128,7 +128,7 @@ localConfigModule = function()
 		end for
 		
 		if (me.handle) then
-			me.handle.set_content(me.rows.join(char(10)))
+			me.handle.set_content(rows.join(char(10)))
 		end if
 	end function
 
@@ -139,6 +139,10 @@ localConfigModule = function()
 			me = x
 		else
 			key = x
+		end if
+
+		if (not me.data.hasIndex(key)) then
+			return null
 		end if
 
 		return me.data[key]

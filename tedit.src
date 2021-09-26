@@ -1,4 +1,5 @@
 import_code("/root/utils/injector.src":"./utils/injector.src")
+import_code("/root/utils/inherits.src":"./utils/inherits.src")
 import_code("/root/utils/argv.src":"./utils/argv.src")
 import_code("/root/utils/loadLib.src":"./utils/loadLib.src")
 import_code("/root/utils/lexer.src":"./utils/lexer.src")
@@ -14,13 +15,13 @@ import_code("/root/utils/vimLexer.src":"./utils/vimLexer.src")
 import_code("/root/utils/basicEditor.src":"./utils/basicEditor.src")
 import_code("/root/utils/codeEditorPlugin.src":"./utils/codeEditorPlugin.src")
 
-toolkit = injector.get("toolkit")
 Uploader = injector.get("uploader")
 State = injector.get("state")
 EnrichedUserInput = injector.get("enrichedUserInput")
 Router = injector.get("router")
 LocalConfig = injector.get("localConfig")
 Highlighter = injector.get("highlighter")
+BasicEditor = injector.get("basicEditor")
 
 parseArgs = function()
 	Argv = injector.get("argv")
@@ -48,27 +49,72 @@ parseArgs = function()
 	return argv
 end function
 
-openEditor = function(file)
-	BasicEditor = injector.get("basicEditor")
-	editorPlugins = []
+showPlugins = function()
+	availableEditors = [BasicEditor] + editorPlugins
+	index = 0
 
-	if (typeof(file) == "File") then
+	print("<b><u>Available editors</u></b>")
+
+	for availableEditor in availableEditors
+		print(char(9) + "(" + index + ") <b>" + availableEditor.name + "</b>")
+		print((char(9) * 2) + availableEditor.description)
+		index = index + 1
+	end for
+
+	pluginIndex = EnrichedUserInput.prompt(char(10) + "Select plugin:" + char(10) + "> ")
+	pluginIndex = pluginIndex.raw.val
+
+	if (availableEditors.hasIndex(pluginIndex)) then
+		return availableEditors[pluginIndex]
+	else
+		clear_screen
+		print("<color=red>Invalid choice</color>")
+		showPlugins()
+	end if
+end function
+
+openEditor = function(file)
+	//custom menus
+	BasicEditor.getCustomMainCmds = function()
+		return {
+			":plugin": "switchPlugin"
+		}
+	end function
+
+	BasicEditor.mainCustomInteractEval = function(command, value)
+		me = self
+
+		if (command == "switchPlugin") then
+			editor = showPlugins()
+			activeEditor = (new editor).constructor(file, localShell, config)
+			activeEditor.open()
+		else
+			me.exception("<color=red>Command is not yet implemented</color>")
+		end if
+	end function
+
+	//plugins
+	editorPlugins.push(injector.get("codeEditorPlugin"))
+
+	//init
+	if (typeof(file) == "file") then
 		file = file.path
 	end if
 
 	foundSupport = false
 
-	for editorPlugin in editorPlugins
-		if (editorPlugin.supports(file)) then
-			editorPlugin.open()
+	for EditorPlugin in editorPlugins
+		if (EditorPlugin.supports(file)) then
+			activeEditor = (new EditorPlugin).constructor(file, localShell, config)
+			activeEditor.open()
 			foundSupport = true
 			break
 		end if
 	end for
 	
 	if (not foundSupport) then
-		defaultEditor = (new BasicEditor).constructor(file, localComputer)
-		defaultEditor.open()
+		activeEditor = (new BasicEditor).constructor(file, localShell, config)
+		activeEditor.open()
 	end if
 end function
 
@@ -78,16 +124,12 @@ if (argv.getWithKey("help") == true) then
 	exit(help)
 end if
 
+globals.activeEditor = null
+globals.editorPlugins = []
 globals.config = (new LocalConfig).constructor(get_shell.host_computer, "/tedit.cfg")
 globals.targetFile = argv.get(0, true)
 globals.appRouter = (new Router).constructor()
-
-config.setDefault({
-
-})
-
-localShell = get_shell
-localComputer = get_shell.host_computer
+globals.localShell = get_shell
 
 onMain = function(args, stdin)
 	openEditor(targetFile)

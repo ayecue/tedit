@@ -188,6 +188,7 @@ parserModule = function(deps)
 				return {"type": "eof", "value":"<eof>", "line": "n/a"}
 			end if
 			if (not next) then break
+			if (next.type == "whtspc") then continue
 			me.prefetchedTokens.push(next)
 			if (next.type == "eof") then break
 		end while
@@ -824,7 +825,7 @@ parserModule = function(deps)
 				me.next()
 				return me.AST.breakStatement()
 			end if
-		else if ("eol" == me.token.type or "cmt" == me.token.type or "whtspc" == me.token.type or "nol" == me.token.type) then
+		else if ("eol" == me.token.type or "cmt" == me.token.type or "nol" == me.token.type) then
 			me.next()
 			return null
 		end if
@@ -909,9 +910,10 @@ parserModule = function(deps)
 
 	Parser.exception = function(message, line) 
 		me = self
-		errMessage = "[Parser] Error: " + message + " with token " + me.token.value + " at line " + line
+		tokenValue = me.token.value
+		errMessage = "[Parser] Error: " + message + " with token " + tokenValue + " ("  + tokenValue.code + ") at line " + line
 		debug(errMessage)
-		me.status.errors.push("[Parser] Error: " + message + " with token " + me.token.value + " at line " + line)
+		me.status.errors.push("[Parser] Error: " + message + " with token " + tokenValue + " ("  + tokenValue.code + ") at line " + line)
 		return null
 	end function
 

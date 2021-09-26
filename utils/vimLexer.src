@@ -122,8 +122,10 @@ vimLexerModule = function()
 		else if (code >= 48 and code <= 57) then
 			return me.scanNumericLiteral()
 		else if (code == 33) then
+			me.nextIndex()
 			return {"type" : "force", "value": true}
 		else if (code == 58) then
+			me.nextIndex()
 			return {"type" : "colon", "value": true}
 		end if
 

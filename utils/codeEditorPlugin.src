@@ -1,53 +1,196 @@
 codeEditorPluginModule = function(deps)
-	Highlighter = deps[0]
+	inherits = @deps[0]
+	BasicEditor = deps[1]
+	Highlighter = deps[2]
 
 	CodeEditorPlugin = {}
 
+	CodeEditorPlugin.name = "Code Editor"
+	CodeEditorPlugin.description = "Editor for editing code. Adds syntax highlighting and other functionality."
 	CodeEditorPlugin.Highlighter = Highlighter
-	CodeEditorPlugin.constructor = function(content)
+	CodeEditorPlugin.constructor = function(file, shell, config)
 		me = self
-
-		me.content = content
-
+		me.highlighterStream = null
+		config.setDefault({
+			"auto-validate": "0",
+			"auto-build": "0"
+		})
+		me.super_constructor(file, shell, config)
 		return me
 	end function
 
-	CodeEditorPlugin.render = function(state)
-		index = 0
-		code = Highlighter.parse(state.getItem("lines").join(char(10)))
-		lines = code.split(char(10))
-		numberWidth = str(lines.len).len
+	inherits(CodeEditorPlugin, BasicEditor)
 
-		print("<b><u>tedit</u></b>")
+	CodeEditorPlugin.getMainCmds = function()
+		me = self
+		cmds = me.super_getMainCmds()
 
-		for line in lines
-			output = ""
+		cmds[":v"] = "validate"
+		cmds[":b"] = "build"
+		cmds[":l"] = "launch"
 
-			if (index == state.getItem("pos")) then
-				output = "<b>></b>"
+		return cmds
+	end function
+
+	CodeEditorPlugin.build = function()
+		me = self
+		result = me.shell.build(me.file.path, me.file.parent.path)
+
+		if (result == "") then
+			print("Build done...")
+			return true
+		end if
+
+		print("[Build Error]: " + result)
+		return false
+	end function
+
+	CodeEditorPlugin.launch = function()
+		me = self
+		dir = me.file.parent.path
+		filename = me.file.name
+		binPath = dir
+
+		if (dir != "/") then
+			binPath = binPath + "/"
+		end if
+
+		binPath = binPath + filename.replace(".src", "")
+
+		if (me.build()) then
+			result = me.shell.launch(binPath, me.enrichedUserInput.prompt("Params:").raw)
+
+			if (result == null) then
+				print("Execution done...")
+				return true
 			end if
 
-			lineNumber = str(index)
+			print("[Execution Error]: Couldn't launch binary.")
+		end if
 
-			if (lineNumber.len < numberWidth) then
-				lineNumber = (" " * (numberWidth - lineNumber.len)) + lineNumber
+		return false
+	end function
+
+	CodeEditorPlugin.validate = function()
+		me = self
+		lines = me.lines
+		modes = me.getModes()
+		currentMode = me.state.getItem("mode")
+
+		if (currentMode == modes.insert) then
+			oldLines = me.lines
+			insertLines = me.insertLines
+			cursorLine = me.state.getItem("cursor-line")
+
+			if (me.insertOverride) then
+				if (cursorLine == oldLines.len) then
+					lines = oldLines[0: cursorLine - 1] + insertLines
+				else if (cursorLine == 0) then
+					lines = insertLines + oldLines[1:]
+				else
+					lines = oldLines[0: cursorLine] + insertLines + oldLines[cursorLine + 1:]
+				end if
+			else
+				if (cursorLine == oldLines.len) then
+					lines = oldLines + insertLines
+				else if (cursorLine == 0) then
+					lines = insertLines + oldLines
+				else
+					lines = oldLines[0: cursorLine] + insertLines + oldLines[cursorLine:]
+				end if
 			end if
+		end if
 
-			output = output + lineNumber + " | " + char(9)
-			output = output + line
+		isValid = me.Highlighter.validate(lines.join(char(10)))
 
-			print(output)
+		if (isValid) then
+			print("No errors found")
+			return
+		end if
 
-			index = index + 1
+		for err in me.Highlighter.errors
+			print(err)
 		end for
+	end function
 
-		print(Highlighter.errors.join(char(10)))
+	CodeEditorPlugin.mainInteractEval = function(command, value)
+		me = self
 
-		state.set("enter-code")
-		return null
+		if (command == "validate") then
+			me.validate()
+			me.enrichedUserInput.prompt("Press any key to continue...")
+		else if (command == "build") then
+			me.build()
+		else if (command == "launch") then
+			me.launch()
+		else
+			me.super_mainInteractEval(command, value)
+		end if
+	end function
+
+	CodeEditorPlugin.supports = function(file)
+		return file.indexOf(".src") != null
+	end function
+
+	CodeEditorPlugin.insertInteractEval = function(value)
+		me = self
+		value = value.replace(";", char(92) +"n")
+		return me.super_insertInteractEval(value)
+	end function
+
+	CodeEditorPlugin.renderFoundLine = function(line, index, numberWidth)
+		me = self
+		me.highlighterStream = me.Highlighter.getParseStream(me.config)
+		return me.super_renderFoundLine(line, index, numberWidth)
+	end function
+
+	CodeEditorPlugin.prepareVisualLine = function(line, index)
+		me = self
+		return me.highlighterStream.write(line)
+	end function
+
+	CodeEditorPlugin.prepareInsertLine = function(line, index)
+		me = self
+		return me.highlighterStream.write(line)
+	end function
+
+	CodeEditorPlugin.saveAs = function()
+		me = self
+
+		me.super_saveAs()
+
+		if (me.config.get("auto-build") == "1") then
+			me.build()
+		end if
+	end function
+
+	CodeEditorPlugin.save = function()
+		me = self
+
+		me.super_save()
+
+		if (me.config.get("auto-build") == "1") then
+			me.build()
+		end if
+	end function
+
+	CodeEditorPlugin.beforeSubRender = function()
+		me = self
+		modes = me.getModes()
+		currentMode = me.state.getItem("mode")
+
+		if (currentMode == modes.insert and me.config.get("auto-validate") == "1") then
+			me.validate()
+		end if
+	end function
+
+	CodeEditorPlugin.render = function()
+		me = self
+		me.highlighterStream = me.Highlighter.getParseStream(me.config)
+		return me.super_render()
 	end function
 
 	return CodeEditorPlugin
 end function
 
-injector.def("codeEditorPlugin", ["highlighter"], @codeEditorPluginModule)
+injector.def("codeEditorPlugin", ["inherits", "basicEditor", "highlighter"], @codeEditorPluginModule)

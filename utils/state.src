@@ -10,6 +10,7 @@ stateModule = function(deps)
 		me.state = "init"
 		me.store = {}
 		me.events = (new me.EventEmitter).constructor()
+		me.queue = []
 		return me
 	end function
 
@@ -22,14 +23,31 @@ stateModule = function(deps)
 	State.set = function(stype, argMap)
 		me = self
 
-		me.previousStates.push(me.state)
-		me.state = stype
+		me.queue.push({
+			"classID": "stateQueueItem",
+			"stateType": stype,
+			"argMap": argMap
+		})
+	end function
 
-		if (argMap) then
-			me.events.emit(stype, me, argMap)
-		else
-			me.events.emit(stype, me)
+	State.next = function()
+		me = self
+		item = me.queue.pull()
+
+		if (item != null) then
+			me.previousStates.push(me.state)
+			me.state = item.stateType
+
+			if (item.argMap) then
+				me.events.emit(item.stateType, me, item.argMap)
+			else
+				me.events.emit(item.stateType, me)
+			end if
+
+			return true
 		end if
+
+		return false
 	end function
 
 	State.has = function(path)

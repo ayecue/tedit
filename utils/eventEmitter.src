@@ -11,6 +11,8 @@ eventEmitterModule = function()
 		me = self
 		if (me.listener.hasIndex(event)) then
 			for callback in @me.listener[event]
+				debug("event emitter callback execution")
+
 				result = null
 				if (arg2) then
 					result = callback(arg1, arg2)

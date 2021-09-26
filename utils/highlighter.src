@@ -69,8 +69,7 @@ highlighterModule = function(deps)
 
 	VisualTransformations.eof = function(transformer, item, stack)
 		debug("transformations.eof")
-
-		return char(10)
+		return ""
 	end function
 
 	VisualTransformations.whtspc = function(transformer, item, stack)
@@ -85,8 +84,7 @@ highlighterModule = function(deps)
 
 	VisualTransformations.eol = function(transformer, item, stack)
 		debug("transformations.eol")
-
-		return char(10)
+		return ""
 	end function
 
 	VisualTransformations.nol = function(transformer, item, stack)
@@ -526,14 +524,17 @@ highlighterModule = function(deps)
 
 		me.currentStack = []
 		me.status = {"errors":[]}
-		me.config = {
+		me.config = config
+
+		me.config.setDefault({
 			"keyword-color": "#E11584",
 			"identifier-color": "#FFF",
 			"string-color": "#F9D71C",
 			"number-color": "#5E9E72",
 			"boolean-color": "#E11584",
 			"comment-color": "#878787"
-		}
+		})
+
 		me.indentation = 0
 		me.transformations = transformations
 		me.next = null
@@ -595,8 +596,8 @@ highlighterModule = function(deps)
 		me = self
 		colorKey = key + "-color"
 
-		if (me.config.hasIndex(colorKey)) then
-			return "<color=" + me.config[colorKey] + ">" + str + "</color>"
+		if (me.config.data.hasIndex(colorKey)) then
+			return "<color=" + me.config.get(colorKey) + ">" + str + "</color>"
 		end if
 
 		return str
@@ -654,50 +655,53 @@ highlighterModule = function(deps)
 	Highlighter.CodeTransformations = CodeTransformations
 	Highlighter.errors = []
 
-	Highlighter.parse = function(content)
-		debug("Highlighter.parse")
+	Highlighter.getParseStream = function(config)
+		debug("Highlighter.getParseIterator")
 		me = self
 
-		me.errors = []
-		lexer = (new me.Lexer).constructor(content)
-		transformer = (new me.Transformer).constructor(me.VisualTransformations)
-		token = lexer.next()
-		code = ""
+		iterator = {}
 
-		while (token)
-			currentToken = token
+		iterator.classID = "highlighterParseStream"
+		iterator.Lexer = me.Lexer
+		iterator.transformer = (new me.Transformer).constructor(me.VisualTransformations, config)
+		iterator.write = function(content)
+			me = self
+			lexer = (new me.Lexer).constructor(content)
+			code = ""
+
 			token = lexer.next()
 
-			transformer.next = token
-			code = code + transformer.make(currentToken)
+			while (token)
+				currentToken = token
+				token = lexer.next()
 
-			if (currentToken.type == "eof") then
-				break
-			end if
-		end while
+				me.transformer.next = token
+				code = code + me.transformer.make(currentToken)
 
-		return code
+				if (currentToken.type == "eof") then
+					break
+				end if
+			end while
+
+			return code
+		end function
+
+		return iterator
 	end function
 
-	Highlighter.parseValidCode = function(content)
-		debug("Highlighter.parseValidCode")
+	Highlighter.validate = function(content)
+		debug("Highlighter.validate")
 		me = self
 
-		me.errors = []
 		parser = (new me.Parser).constructor(content)
 		chunk = parser.parseChunk()
+		me.errors = parser.getErrors()
 
-		if (chunk == null) then
-			me.errors = parser.getErrors()
-			return ""
+		if (me.errors.len > 0) then
+			return false
 		end if
 
-		transformer = (new me.Transformer).constructor(me.CodeTransformations)
-		code = transformer.transform(chunk)
-
-		me.errors = parser.getErrors() + transformer.getErrors()
-
-		return code
+		return true
 	end function
 
 	return Highlighter

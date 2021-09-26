@@ -7,11 +7,19 @@ enrichedUserInputModule = function(deps)
 	UserInput.globalState = (new State).constructor()
 	UserInput.State = State
 
-	UserInput.prompt = function(message, isPassword)
+	UserInput.userInput = function(message, isPassword)
 		if (isPassword == null) then isPassword = false
-		line = user_input(message, isPassword).trim
+		result = user_input(message, isPassword)
+		return result
+	end function
+
+	UserInput.prompt = function(message, isPassword)
+		me = self
+		line = me.userInput(message, isPassword)
+		print(char(0)) //this will debug stuck waits
+		line = line.trim
 		segments = line.split(" ")
-		cmd = segments.pull().trim()
+		cmd = segments.pull().trim
 		return {"classID": "response","cmd":cmd,"args":segments.join(" "),"raw":line}
 	end function
 
@@ -69,6 +77,7 @@ enrichedUserInputModule = function(deps)
 		requestObj.globalQueries = me.globalQueries
 		requestObj.allowExit = allowExit
 		requestObj.defaultInputMap = defaultInputMap
+		requestObj.enrichedUserInput = me
 		if (ignoreGlobalQuery) then requestObj.globalQueries = []
 		requestObj.send = function(callback)
 			me = self
@@ -110,7 +119,7 @@ enrichedUserInputModule = function(deps)
 					defaultInput = me.defaultInputMap[name]
 				end if
 
-				stdin = user_input(item.msg + char(10) + "> " + defaultInput).trim
+				stdin = me.enrichedUserInput.userInput(item.msg + char(10) + "> " + defaultInput).trim
 				stdin = defaultInput + stdin
 
 				if (stdin == "") then
