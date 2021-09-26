@@ -79,8 +79,11 @@ codeEditorPluginModule = function(deps)
 
 		if (currentMode == modes.insert) then
 			oldLines = me.lines
-			insertLines = me.insertLines
+			insertLines = [] + me.insertLines
+			insertLinesLastIndex = insertLines.len - 1
 			cursorLine = me.state.getItem("cursor-line")
+
+			insertLines[insertLinesLastIndex] = insertLines[insertLinesLastIndex] + me.insertTextRight
 
 			if (me.insertOverride) then
 				if (cursorLine == oldLines.len) then
@@ -155,20 +158,34 @@ codeEditorPluginModule = function(deps)
 				offset = state.getItem("cursor-offset")
 			end if
 
+			leftCursorIndex = offset[0]
+			rightCursorIndex = offset[1]
+
 			currentOffset = 0
 			trueOffset = me.getIndent(line)
 			max = output.len
 			isInString = false
 			newOutput = ""
+			isCursorVisible = false
+			isInMarking = false
 
 			while (currentOffset < max)
 				str = output[currentOffset]
+
+				if (leftCursorIndex == rightCursorIndex and trueOffset == leftCursorIndex and not isCursorVisible) then
+					isCursorVisible = true
+					newOutput = newOutput + "<mark=" + me.config.get("cursor-position-color") + ">" + char(124) + "</mark>"
+				end if
 
 				if (str.code == 9) then
 					newOutput = newOutput + str
 					currentOffset = currentOffset + 1
 					continue
 				else if (str.code == 60 and not isInString) then
+					if (isInMarking) then
+						newOutput = newOutput + "</mark>"
+					end if
+
 					while (str.code != 62 and currentOffset < max)
 						newOutput = newOutput + str
 						currentOffset = currentOffset + 1
@@ -176,22 +193,36 @@ codeEditorPluginModule = function(deps)
 					end while
 					newOutput = newOutput + str
 					currentOffset = currentOffset + 1
+
+					if (isInMarking) then
+						newOutput = newOutput + "<mark=" + me.config.get("cursor-position-color") + ">"
+					end if
+
 					continue
 				else if (str.code == 34) then
 					isInString = not isInString
 				end if
 
-				if (trueOffset == offset[0]) then
-					newOutput = newOutput + "<mark=" + me.config.get("cursor-position-color") + ">" + str
-				else if (trueOffset == offset[1]) then
-					newOutput = newOutput + "</mark>" + str
-				else
-					newOutput = newOutput + str
+				if (leftCursorIndex != rightCursorIndex) then
+					if (trueOffset == leftCursorIndex) then
+						isInMarking = true
+						newOutput = newOutput + "<mark=" + me.config.get("cursor-position-color") + ">"
+					else if (trueOffset == rightCursorIndex) then
+						isInMarking = false
+						newOutput = newOutput + "</mark>"
+					end if
 				end if
+
+				newOutput = newOutput + str
 
 				currentOffset = currentOffset + 1
 				trueOffset = trueOffset + 1
 			end while
+
+			if (leftCursorIndex == rightCursorIndex and trueOffset == leftCursorIndex and not isCursorVisible) then
+				isCursorVisible = true
+				newOutput = newOutput + "<mark=" + me.config.get("cursor-position-color") + ">" + char(124) + "</mark>"
+			end if
 
 			output = newOutput
 		end if

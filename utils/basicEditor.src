@@ -27,7 +27,7 @@ basicEditorModule = function(deps)
 		me.state.setItem("instance", me)
 		me.state.setItem("mode", me.getModes().visual)
 		me.state.setItem("cursor-line", 0)
-		me.state.setItem("cursor-offset", [0, 1])
+		me.state.setItem("cursor-offset", [0, 0])
 
 		me.file = parsedFile
 		me.lines = parsedFile.get_content.split(char(10))
@@ -37,6 +37,7 @@ basicEditorModule = function(deps)
 		me.config = config
 		me.gracefulShutdown = false
 		me.lastSearchResults = []
+		me.selectedSearchResult = null
 		me.saved = true
 
 		config.setDefault({
@@ -88,14 +89,17 @@ basicEditorModule = function(deps)
 			"l": "moveRight",
 			"o": "appendAbove",
 			"O": "appendBelow",
-			"d": "deleteLine",
+			"d": "deleteMarkedText",
+			"dd": "deleteLine",
 			"i": "insert",
 			"I": "insertAtBeginning",
 			"f": "find",
 			"g": "gotoLine",
 			"G": "gotoOffset",
-			"fx": "findAndJump",
-			"tx": "findNextAndJump"
+			"fx": "findAndJumpNext",
+			"tx": "findNextResult",
+			"Fx": "findAndJumpPrevious",
+			"Tx": "findPreviousResult"
 		}
 	end function
 
@@ -401,12 +405,13 @@ basicEditorModule = function(deps)
 			line = me.lines[index]
 			matchIndex = line.indexOf(stringToSearch.raw)
 
-			if (matchIndex != null) then
+			while (matchIndex != null)
 				results.push({
 					"lineNumber": index,
 					"offset": [matchIndex, matchIndex + strLength]
 				})
-			end if
+				matchIndex = line.indexOf(stringToSearch.raw, matchIndex)
+			end while
 
 			index = index + 1
 		end while
@@ -419,12 +424,36 @@ basicEditorModule = function(deps)
 	BasicEditor.selectNextFindResult = function()
 		me = self
 		item = me.lastSearchResults.pull()
+		previousItem = me.selectedSearchResult
 
 		if (item == null) then
 			return
 		end if
 
-		me.lastSearchResults.push(item)
+		me.selectedSearchResult = item
+
+		if (previousItem != null) then
+			me.lastSearchResults.push(previousItem)
+		end if
+
+		me.setPosition(item.lineNumber, item.offset)
+	end function
+
+	BasicEditor.selectPreviousFindResult = function()
+		me = self
+		item = me.lastSearchResults.pop()
+		previousItem = me.selectedSearchResult
+
+		if (item == null) then
+			return
+		end if
+
+		me.selectedSearchResult = item
+
+		if (previousItem != null) then
+			me.lastSearchResults = [previousItem] + me.lastSearchResults
+		end if
+
 		me.setPosition(item.lineNumber, item.offset)
 	end function
 
@@ -584,8 +613,8 @@ basicEditorModule = function(deps)
 				me.setPosition(cursorLine, [position, positionRight])
 			else
 				position = values.pull()
-				if (value == null) then value = 0;
-				me.setPosition(cursorLine, value)
+				if (position == null) then position = 0;
+				me.setPosition(cursorLine, position)
 			end if
 		else if (command == "appendAbove") then
 			me.enterInsert()
@@ -599,13 +628,20 @@ basicEditorModule = function(deps)
 			me.enterInsert(true)
 		else if (command == "deleteLine") then
 			me.deleteLine()
+		else if (command == "deleteMarkedText") then
+			me.deleteMarkedText()
 		else if (command == "find") then
 			me.findAndShowLines()
-		else if (command == "findAndJump") then
+		else if (command == "findAndJumpNext") then
 			me.find()
 			me.selectNextFindResult()
-		else if (command == "findNextAndJump") then
+		else if (command == "findNextResult") then
 			me.selectNextFindResult()
+		else if (command == "findAndJumpPrevious") then
+			me.find()
+			me.selectPreviousFindResult()
+		else if (command == "findPreviousResult") then
+			me.selectPreviousFindResult()
 		else
 			me.exception("<color=red>Command is not yet implemented</color>")
 		end if
@@ -780,6 +816,28 @@ basicEditorModule = function(deps)
 		me.lines = newLines
 	end function
 
+	BasicEditor.deleteMarkedText = function()
+		me = self
+		cursorLine = me.state.getItem("cursor-line")
+		cursorOffset = me.state.getItem("cursor-offset")
+		line = me.lines[cursorLine]
+		leftText = ""
+		rightText = ""
+		leftIndex = cursorOffset[0]
+		rightIndex = cursorOffset[1]
+
+		if (leftIndex > 0) then
+			leftText = line[:leftIndex]
+		end if
+
+		if (rightIndex < line.len) then
+			rightText = line[rightIndex:]
+		end if
+
+		me.lines[cursorLine] = leftText + rightText
+		me.saved = false
+	end function
+
 	BasicEditor.deleteLine = function()
 		me = self
 		oldLines = me.lines
@@ -798,6 +856,7 @@ basicEditorModule = function(deps)
 		end if
 
 		me.lines = newLines
+		me.saved = false
 	end function
 
 	BasicEditor.setPosition = function(position, offset)
@@ -820,7 +879,7 @@ basicEditorModule = function(deps)
 				offset = 0
 			end if
 
-			offset = [offset, offset + 1]
+			offset = [offset, offset]
 		else
 			left = offset[0]
 			right = offset[1]
@@ -838,7 +897,7 @@ basicEditorModule = function(deps)
 			end if
 
 			if (left >= right) then
-				left = right - 1
+				left = right
 			end if
 
 			offset = [left, right]
@@ -974,11 +1033,11 @@ basicEditorModule = function(deps)
 				offset = state.getItem("cursor-offset")
 			end if
 
-			leftStr = ""
-			rightStr = ""
-
 			leftIndex = offset[0]
 			rightIndex = offset[1]
+
+			leftStr = ""
+			rightStr = ""
 			current = output[leftIndex: rightIndex]
 
 			if (leftIndex > 0) then
@@ -988,8 +1047,12 @@ basicEditorModule = function(deps)
 			if (rightIndex < line.len) then
 				rightStr = output[rightIndex:]
 			end if
-
-			output = leftStr + "<mark=" + me.config.get("cursor-position-color") + ">" + current + "</mark>" + rightStr
+			
+			if (leftIndex != rightIndex) then
+				output = leftStr + "<mark=" + me.config.get("cursor-position-color") + ">" + current + "</mark>" + rightStr
+			else
+				output = leftStr + "<mark=" + me.config.get("cursor-position-color") + ">" + char(124) + "</mark>" + rightStr
+			end if
 		end if
 
 		return output
