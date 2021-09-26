@@ -687,7 +687,7 @@ parserModule = function(deps)
 
 		mainStatementLine = me.token.line
 		base = null
-		last = null
+		last = {"range":[-1, -1],"type":"unknown"}
 
 		if ("idtf" == me.token.type) then
 			base = me.parseIdentifier()

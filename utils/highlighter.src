@@ -64,6 +64,10 @@ highlighterModule = function(deps)
 	VisualTransformations.idtf = function(transformer, item, stack)
 		debug("transformations.idtf")
 
+		if (transformer.isNativeFunction(item.value)) then
+			return transformer.color("native-function", item.value)
+		end if
+
 		return transformer.color("identifier", item.value)
 	end function
 
@@ -532,9 +536,43 @@ highlighterModule = function(deps)
 			"string-color": "#F9D71C",
 			"number-color": "#5E9E72",
 			"boolean-color": "#E11584",
-			"comment-color": "#878787"
+			"comment-color": "#878787",
+			"native-function-color": "#009dc4",
+			"native-methods": [
+				"exit",
+				"typeof",
+				"print",
+				"wait",
+				"time",
+				"typeof",
+				"md5",
+				"get_router",
+				"get_shell",
+				"nslookup",
+				"whois",
+				"is_valid_ip",
+				"is_lan_ip",
+				"command_info",
+				"current_date",
+				"current_path",
+				"parent_path",
+				"home_dir",
+				"program_path",
+				"active_user",
+				"user_mail_address",
+				"user_bank_number",
+				"format_columns",
+				"user_input",
+				"include_lib",
+				"bitwise",
+				"clear_screen",
+				"exit",
+				"import_" + "code",
+				"char"
+			].join(",")
 		})
 
+		me.nativeMethods = me.config.get("native-methods").split(",")
 		me.indentation = 0
 		me.transformations = transformations
 		me.next = null
@@ -601,6 +639,11 @@ highlighterModule = function(deps)
 		end if
 
 		return str
+	end function
+
+	Transformer.isNativeFunction = function(idtf)
+		me = self
+		return me.nativeMethods.indexOf(idtf) != null
 	end function
 
 	Transformer.make = function(o)

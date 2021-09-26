@@ -144,9 +144,59 @@ codeEditorPluginModule = function(deps)
 		return me.super_renderFoundLine(line, index, numberWidth)
 	end function
 
-	CodeEditorPlugin.prepareVisualLine = function(line, index)
+	CodeEditorPlugin.prepareVisualLine = function(line, index, highlight, offset)
 		me = self
-		return me.highlighterStream.write(line)
+		state = me.state
+		output = me.highlighterStream.write(line)
+
+		//needs to be improved
+		if ((highlight == null and index == state.getItem("cursor-line")) or (highlight != null and highlight)) then
+			if (offset == null) then
+				offset = state.getItem("cursor-offset")
+			end if
+
+			currentOffset = 0
+			trueOffset = me.getIndent(line)
+			max = output.len
+			isInString = false
+			newOutput = ""
+
+			while (currentOffset < max)
+				str = output[currentOffset]
+
+				if (str.code == 9) then
+					newOutput = newOutput + str
+					currentOffset = currentOffset + 1
+					continue
+				else if (str.code == 60 and not isInString) then
+					while (str.code != 62 and currentOffset < max)
+						newOutput = newOutput + str
+						currentOffset = currentOffset + 1
+						str = output[currentOffset]
+					end while
+					newOutput = newOutput + str
+					currentOffset = currentOffset + 1
+					continue
+				else if (str.code == 34) then
+					isInString = not isInString
+				end if
+
+				if (trueOffset == offset[0]) then
+					newOutput = newOutput + "<mark=" + me.config.get("cursor-position-color") + ">" + str
+				else if (trueOffset == offset[1]) then
+					newOutput = newOutput + "</mark>" + str
+				else
+					newOutput = newOutput + str
+				end if
+
+				currentOffset = currentOffset + 1
+				trueOffset = trueOffset + 1
+			end while
+
+			output = newOutput
+		end if
+
+		return output
 	end function
 
 	CodeEditorPlugin.prepareInsertLine = function(line, index)
