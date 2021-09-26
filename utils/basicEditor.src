@@ -266,7 +266,8 @@ basicEditorModule = function(deps)
 		filepath = me.enrichedUserInput.prompt("Enter path:")
 		result = me.saveFileAs(filepath, me.lines.join(char(10)))
 
-		if (typeof(result) == file) then
+		if (typeof(result) == "file") then
+			print("Saved as " + result.path + "...")
 			me.file = result
 		else
 			me.exception("Cannot save file: " + result)
@@ -275,6 +276,7 @@ basicEditorModule = function(deps)
 
 	BasicEditor.save = function()
 		me = self
+		print("Saving file ...")
 		me.file.set_content(me.lines.join(char(10)))
 		me.saved = true
 	end function
@@ -293,6 +295,7 @@ basicEditorModule = function(deps)
 		if (currentMode == modes.insert) then
 			me.exitInsert()
 		else if (me.saved or me.enrichedUserInput.confirm("You didn't save. Are you sure you want to exit?")) then
+			print("Bye bye :)")
 			me.gracefulShutdown = true
 		else
 			me.exception("Cannot exit editor. File is not saved.")
@@ -1109,7 +1112,6 @@ basicEditorModule = function(deps)
 		wait(0.1)
 		print(char(0)) //this will debug stuck waits
 		clear_screen
-		//print("------------------------clear-------------------")
 	end function
 
 	return BasicEditor

@@ -34,7 +34,16 @@ codeEditorPluginModule = function(deps)
 
 	CodeEditorPlugin.build = function()
 		me = self
-		result = me.shell.build(me.file.path, me.file.parent.path)
+
+		if (not me.saved) then
+			me.save(true)
+		end if
+
+		filepath = me.file.path
+		targetDir = me.file.parent.path
+		result = me.shell.build(filepath, targetDir)
+
+		print("Building " + filepath + " in " + targetDir)
 
 		if (result == "") then
 			print("Build done...")
@@ -58,6 +67,7 @@ codeEditorPluginModule = function(deps)
 		binPath = binPath + filename.replace(".src", "")
 
 		if (me.build()) then
+			wait(1)
 			result = me.shell.launch(binPath, me.enrichedUserInput.prompt("Params:").raw)
 
 			if (result == null) then
@@ -246,12 +256,12 @@ codeEditorPluginModule = function(deps)
 		end if
 	end function
 
-	CodeEditorPlugin.save = function()
+	CodeEditorPlugin.save = function(forced)
 		me = self
 
 		me.super_save()
 
-		if (me.config.get("auto-build") == "1") then
+		if (not forced and me.config.get("auto-build") == "1") then
 			me.build()
 		end if
 	end function
