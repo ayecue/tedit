@@ -8,7 +8,7 @@ Other plugins comming soon.
 
 # Demo
 
-[![TEdit Demo](/assets/demo.gif?raw=true)](https://www.youtube.com/watch?v=4_y2SWmwj_M)
+[![TEdit Demo](/assets/demo.gif?raw=true)](https://www.youtube.com/watch?v=waPEtJLboRw)
 
 # Install
 
