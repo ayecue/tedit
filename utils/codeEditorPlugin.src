@@ -126,6 +126,7 @@ codeEditorPluginModule = function(deps)
 			me.build()
 		else if (command == "launch") then
 			me.launch()
+			me.enrichedUserInput.prompt("Press any key to continue...")
 		else
 			me.super_mainInteractEval(command, value)
 		end if

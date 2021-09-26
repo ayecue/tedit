@@ -72,6 +72,7 @@ basicEditorModule = function(deps)
 			":help": "help",
 			":q": "close",
 			":w": "save",
+			":wq": "saveQuit",
 			":x": "saveQuit",
 			":set": "setOptions"
 		}
@@ -721,7 +722,7 @@ basicEditorModule = function(deps)
 		if (command == "close") then
 			me.close()
 		else if (command == "help") then
-			me.exception("<color=red>Currently there is no help implemented</color>")
+			me.exception("Currently there is no help implemented. You can checkout this Vim cheatsheet though: <b>https://gist.github.com/awidegreen/3854277</b>")
 		else if (command == "saveAs") then
 			me.saveAs()
 		else if (command == "save") then

@@ -57,8 +57,13 @@ highlighterModule = function(deps)
 
 	VisualTransformations.bool = function(transformer, item, stack)
 		debug("transformations.bool")
+		displayValue = "false"
 
-		return transformer.color("boolean", item.value)
+		if (item.value) then
+			displayValue = "true"
+		end if
+
+		return transformer.color("boolean", displayValue)
 	end function
 
 	VisualTransformations.idtf = function(transformer, item, stack)
