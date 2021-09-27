@@ -2,11 +2,13 @@ codeEditorPluginModule = function(deps)
 	inherits = @deps[0]
 	BasicEditor = deps[1]
 	Highlighter = deps[2]
+	StyledText = deps[3]
 
 	CodeEditorPlugin = {}
 
 	CodeEditorPlugin.name = "Code Editor"
 	CodeEditorPlugin.description = "Editor for editing code. Adds syntax highlighting and other functionality."
+	CodeEditorPlugin.StyledText = StyledText
 	CodeEditorPlugin.Highlighter = Highlighter
 	CodeEditorPlugin.constructor = function(file, shell, config)
 		me = self
@@ -162,83 +164,26 @@ codeEditorPluginModule = function(deps)
 		me = self
 		state = me.state
 		output = me.highlighterStream.write(line)
+		styledText = (new me.StyledText).constructor(output)
 
-		//needs to be improved
 		if ((highlight == null and index == state.getItem("cursor-line")) or (highlight != null and highlight)) then
 			if (offset == null) then
 				offset = state.getItem("cursor-offset")
 			end if
 
-			leftCursorIndex = offset[0]
-			rightCursorIndex = offset[1]
+			indent = me.getIndent(line)
+			leftCursorIndex = offset[0] - indent
+			rightCursorIndex = offset[1] - indent
 
-			currentOffset = 0
-			trueOffset = me.getIndent(line)
-			max = output.len
-			isInString = false
-			newOutput = ""
-			isCursorVisible = false
-			isInMarking = false
-
-			while (currentOffset < max)
-				str = output[currentOffset]
-
-				if (leftCursorIndex == rightCursorIndex and trueOffset == leftCursorIndex and not isCursorVisible) then
-					isCursorVisible = true
-					newOutput = newOutput + "<mark=" + me.config.get("cursor-position-color") + ">" + char(124) + "</mark>"
-				end if
-
-				if (str.code == 9) then
-					newOutput = newOutput + str
-					currentOffset = currentOffset + 1
-					continue
-				else if (str.code == 60 and not isInString) then
-					if (isInMarking) then
-						newOutput = newOutput + "</mark>"
-					end if
-
-					while (str.code != 62 and currentOffset < max)
-						newOutput = newOutput + str
-						currentOffset = currentOffset + 1
-						str = output[currentOffset]
-					end while
-					newOutput = newOutput + str
-					currentOffset = currentOffset + 1
-
-					if (isInMarking) then
-						newOutput = newOutput + "<mark=" + me.config.get("cursor-position-color") + ">"
-					end if
-
-					continue
-				else if (str.code == 34) then
-					isInString = not isInString
-				end if
-
-				if (leftCursorIndex != rightCursorIndex) then
-					if (trueOffset == leftCursorIndex) then
-						isInMarking = true
-						newOutput = newOutput + "<mark=" + me.config.get("cursor-position-color") + ">"
-					else if (trueOffset == rightCursorIndex) then
-						isInMarking = false
-						newOutput = newOutput + "</mark>"
-					end if
-				end if
-
-				newOutput = newOutput + str
-
-				currentOffset = currentOffset + 1
-				trueOffset = trueOffset + 1
-			end while
-
-			if (leftCursorIndex == rightCursorIndex and trueOffset == leftCursorIndex and not isCursorVisible) then
-				isCursorVisible = true
-				newOutput = newOutput + "<mark=" + me.config.get("cursor-position-color") + ">" + char(124) + "</mark>"
+			if (leftCursorIndex == rightCursorIndex) then
+				styledText.insertText(char(124), leftCursorIndex)
+				styledText.addTag("mark", me.config.get("cursor-position-color"), [leftCursorIndex, leftCursorIndex + 1])
+			else
+				styledText.addTag("mark", me.config.get("cursor-position-color"), [leftCursorIndex, rightCursorIndex])
 			end if
-
-			output = newOutput
 		end if
 
-		return output
+		return styledText.toString()
 	end function
 
 	CodeEditorPlugin.prepareInsertLine = function(line, index)
@@ -285,4 +230,4 @@ codeEditorPluginModule = function(deps)
 	return CodeEditorPlugin
 end function
 
-injector.def("codeEditorPlugin", ["inherits", "basicEditor", "highlighter"], @codeEditorPluginModule)
+injector.def("codeEditorPlugin", ["inherits", "basicEditor", "highlighter", "styledText"], @codeEditorPluginModule)

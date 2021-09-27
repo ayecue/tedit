@@ -2,6 +2,7 @@
 #include ./utils/inherits;
 #include ./utils/argv;
 #include ./utils/loadLib;
+#include ./utils/styledText;
 #include ./utils/lexer;
 #include ./utils/highlighter;
 #include ./utils/parser;

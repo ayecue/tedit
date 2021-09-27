@@ -1,0 +1,193 @@
+styledTextModule = function()
+	StyledText = {}
+
+	StyledText.constructor = function(text)
+		me = self
+
+		parsed = me.parse(text)
+
+		me.tags = []
+		me.text = ""
+
+		if (parsed == null) then
+			return me
+		end if
+
+		me.text = parsed.text
+		me.tags = parsed.tags
+
+		return me
+	end function
+
+	StyledText.addTag = function(type, value, boundaries)
+		me = self
+
+		me.tags.push({
+			"classID": "tag",
+			"type": type,
+			"value": value,
+			"boundaries": boundaries
+		})
+
+		return me
+	end function
+
+	StyledText.insertText = function(text, index)
+		me = self
+
+		for tag in me.tags
+			if (index <= tag.boundaries[1]) then
+				tag.boundaries[1] = tag.boundaries[1] + text.len
+			end if 
+		end for
+
+		leftText = ""
+		rightText = ""
+
+		if (index > 0) then
+			leftText = me.text[:index]
+		end if
+
+		if (index < me.text.len) then
+			rightText = me.text[index:]
+		end if
+
+		me.text = leftText + text + rightText
+		return me
+	end function
+
+	StyledText.parse = function(text)
+		currentOffset = 0
+		trueOffset = 0
+		max = text.len
+		isInString = false
+		newText = ""
+		tags = []
+
+		while (currentOffset < max)
+			str = text[currentOffset]
+
+			if (str.code == 60 and not isInString) then
+				nextStr = text[currentOffset + 1]
+
+				tag = ""
+
+				while (currentOffset < max)
+					currentOffset = currentOffset + 1
+					str = text[currentOffset]
+
+					if (str.code != 62) then
+						tag = tag + str
+					else
+						break
+					end if
+				end while
+
+				if (nextStr.code == 47) then
+					lastTagIndex = tags.len - 1
+					lastTag = tags[lastTagIndex]
+
+					tagType = tag[1:]
+
+					if (tagType == lastTag.type) then
+						lastTag.boundaries[1] = trueOffset
+					else
+						return null
+					end if
+				else
+					segments = tag.split("=")
+					tagType = segments[0]
+					tagValue = segments[1]
+
+					tags.push({
+						"classID": "tag",
+						"type": tagType.trim,
+						"value": tagValue.trim,
+						"boundaries": [trueOffset, -1]
+					})
+				end if
+
+				currentOffset = currentOffset + 1
+				continue
+			else if (str.code == 34) then
+				isInString = not isInString
+			end if
+
+			newText = newText + str
+
+			currentOffset = currentOffset + 1
+			trueOffset = trueOffset + 1
+		end while
+
+		return {
+			"text": newText,
+			"tags": tags
+		}
+	end function
+
+	StyledText.toString = function()
+		me = self
+		text = me.text
+		index = 0
+		max = text.len
+		output = ""
+		availableTags = [] + me.tags
+		activeTags = []
+
+		while (index < max)
+			currentChar = text[index]
+
+			nextAvailableTags = []
+			
+			for item in availableTags
+				if (item.boundaries[0] == index) then
+					output = output + "<" + item.type + "=" + item.value + ">"
+					activeTags.push(item)
+				else
+					nextAvailableTags.push(item)
+				end if
+			end for
+
+			availableTags = nextAvailableTags
+
+			nextActiveTags = []
+			activeIndex = 0
+			
+			for item in activeTags
+				if (item.boundaries[1] == index) then
+					if (activeIndex != activeTags.len - 1) then
+						siblings = activeTags[activeIndex + 1:]
+
+						for sibling in siblings
+							output = output + "</" + sibling.type + ">"
+						end for
+
+						output = output + "</" + item.type + ">"
+
+						for sibling in siblings
+							output = output + "<" + sibling.type + "=" + sibling.value + ">"
+						end for
+					else
+						output = output + "</" + item.type + ">"
+					end if
+				else
+					nextActiveTags.push(item)
+				end if
+
+				activeIndex = activeIndex + 1
+			end for
+
+			activeTags = nextActiveTags
+
+			output = output + currentChar
+
+			index = index + 1
+		end while
+
+		return output
+	end function
+
+	return StyledText
+end function
+
+injector.def("styledText", @styledTextModule)
