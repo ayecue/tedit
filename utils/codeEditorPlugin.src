@@ -164,9 +164,10 @@ codeEditorPluginModule = function(deps)
 		me = self
 		state = me.state
 		output = me.highlighterStream.write(line)
-		styledText = (new me.StyledText).constructor(output)
 
 		if ((highlight == null and index == state.getItem("cursor-line")) or (highlight != null and highlight)) then
+			styledText = (new me.StyledText).constructor(output)
+
 			if (offset == null) then
 				offset = state.getItem("cursor-offset")
 			end if
@@ -181,9 +182,11 @@ codeEditorPluginModule = function(deps)
 			else
 				styledText.addTag("mark", me.config.get("cursor-position-color"), [leftCursorIndex, rightCursorIndex])
 			end if
+
+			output = styledText.toString()
 		end if
 
-		return styledText.toString()
+		return output
 	end function
 
 	CodeEditorPlugin.prepareInsertLine = function(line, index)
