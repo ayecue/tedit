@@ -623,7 +623,7 @@ basicEditorModule = function(deps)
 		else if (command == "appendAbove") then
 			me.enterInsert()
 		else if (command == "appendBelow") then
-			me.setPosition(cursorLine + 1, cursorOffset)
+			me.setPosition(cursorLine + 1, cursorOffset, true)
 			me.enterInsert()
 		else if (command == "insert") then
 			me.enterInsert(true)
@@ -780,8 +780,9 @@ basicEditorModule = function(deps)
 			me.setPosition(cursorLine + me.insertLines.len, cursorOffset)
 
 			me.saved = false
-			me.state.setItem("mode", me.getModes().visual)
 		end if
+
+		me.state.setItem("mode", me.getModes().visual)
 	end function
 
 	BasicEditor.appendInsertLines = function()
@@ -808,6 +809,11 @@ basicEditorModule = function(deps)
 		insertLines = me.insertLines
 		newLines = oldLines
 		cursorLine = me.state.getItem("cursor-line")
+
+		if (oldLines.len <= 1) then
+			me.lines = insertLines
+			return
+		end if
 
 		if (cursorLine == oldLines.len) then
 			newLines = oldLines[0: cursorLine - 1] + insertLines
@@ -863,12 +869,18 @@ basicEditorModule = function(deps)
 		me.saved = false
 	end function
 
-	BasicEditor.setPosition = function(position, offset)
+	BasicEditor.setPosition = function(position, offset, appendLines)
 		me = self
 		linesLength = me.lines.len
 		
-		if (linesLength < position) then
-			position = linesLength - 1
+		if (linesLength <= position) then
+			if (appendLines) then
+				newLines = ("." * (position - linesLength - 1)).split(".")
+				me.lines = me.lines + newLines
+				linesLength = me.lines.len
+			else
+				position = linesLength - 1
+			end if
 		else if (position < 0) then
 			position = 0
 		end if
