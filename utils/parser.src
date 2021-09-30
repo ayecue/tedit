@@ -222,8 +222,8 @@ parserModule = function(deps)
 	Parser.isUnary = function(token)
 		type = token.type
 		value = token.value
-		if ("punc" == type) then return "@" == value or "-" == value or "+" == value
-		if ("kwd" == type) then return "new" == value or "not" == value
+		if ("punc" == type) then return "@" == value
+		if ("kwd" == type) then return "new" == value
 		return false
 	end function
 
@@ -331,7 +331,7 @@ parserModule = function(deps)
 
 		while (true)
 			if (token.value == "]") then break
-			if (token.value == ":" and token.type == "idtf") then
+			if (token.value == ":" and token.type == "slice") then
 				left = null
 				right = null
 
@@ -693,7 +693,7 @@ parserModule = function(deps)
 			base = me.parseIdentifier()
 		else if ("(" == me.token.value) then
 			me.next()
-			base = me.parseExpectedExpression(flowContext, true)
+			base = me.parseExpectedExpression(flowContext)
 			me.expect(")")
 		else if (me.nonNilLiterals.indexOf(me.token.type) != null) then
 			base = me.parseExpectedExpression(flowContext)
@@ -834,6 +834,7 @@ parserModule = function(deps)
 	end function
 
 	Parser.parseBlockShortcut = function(flowContext)
+		debug("parser.parseBlockShortcut")
 		me = self
 		block = []
 		statement = null

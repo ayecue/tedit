@@ -15,6 +15,7 @@ import_code("/root/utils/uploader.src":"./utils/uploader.src")
 import_code("/root/utils/vimLexer.src":"./utils/vimLexer.src")
 import_code("/root/utils/basicEditor.src":"./utils/basicEditor.src")
 import_code("/root/utils/codeEditorPlugin.src":"./utils/codeEditorPlugin.src")
+import_code("/root/utils/interpreter.src":"./utils/interpreter.src")
 
 Uploader = injector.get("uploader")
 State = injector.get("state")

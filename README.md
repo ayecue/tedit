@@ -1,8 +1,15 @@
 # TEdit
 
-Vim like text editor for GreyHack.
+Vim like text editor for the game Grey Hack.
 
-Contains a Code editor plugin as well which adds syntax highlighting and other features.
+Features:
+- Vim commands like search etc
+
+Plugins:
+- CodeEditor
+	- Syntax highlighting
+	- Custom syntax check
+	- Custom interpreter
 
 Other plugins comming soon.
 

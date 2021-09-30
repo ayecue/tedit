@@ -3,6 +3,7 @@ codeEditorPluginModule = function(deps)
 	BasicEditor = deps[1]
 	Highlighter = deps[2]
 	StyledText = deps[3]
+	Interpreter = deps[4]
 
 	CodeEditorPlugin = {}
 
@@ -10,6 +11,7 @@ codeEditorPluginModule = function(deps)
 	CodeEditorPlugin.description = "Editor for editing code. Adds syntax highlighting and other functionality."
 	CodeEditorPlugin.StyledText = StyledText
 	CodeEditorPlugin.Highlighter = Highlighter
+	CodeEditorPlugin.Interpreter = Interpreter
 	CodeEditorPlugin.constructor = function(file, shell, config)
 		me = self
 		me.highlighterStream = null
@@ -30,6 +32,7 @@ codeEditorPluginModule = function(deps)
 		cmds[":v"] = "validate"
 		cmds[":b"] = "build"
 		cmds[":l"] = "launch"
+		cmds[":lv"] = "vlaunch"
 
 		return cmds
 	end function
@@ -81,6 +84,15 @@ codeEditorPluginModule = function(deps)
 		end if
 
 		return false
+	end function
+
+	CodeEditorPlugin.launchInterpreter = function()
+		me = self
+
+		customParams = me.enrichedUserInput.prompt("Params:").raw.split(" ")
+		code = me.lines.join(";")
+
+		me.Interpreter.execute(code, customParams)
 	end function
 
 	CodeEditorPlugin.validate = function()
@@ -138,6 +150,9 @@ codeEditorPluginModule = function(deps)
 			me.build()
 		else if (command == "launch") then
 			me.launch()
+			me.enrichedUserInput.prompt("Press any key to continue...")
+		else if (command == "vlaunch") then
+			me.launchInterpreter()
 			me.enrichedUserInput.prompt("Press any key to continue...")
 		else
 			me.super_mainInteractEval(command, value)
@@ -233,4 +248,4 @@ codeEditorPluginModule = function(deps)
 	return CodeEditorPlugin
 end function
 
-injector.def("codeEditorPlugin", ["inherits", "basicEditor", "highlighter", "styledText"], @codeEditorPluginModule)
+injector.def("codeEditorPlugin", ["inherits", "basicEditor", "highlighter", "styledText", "teditInterpreter"], @codeEditorPluginModule)

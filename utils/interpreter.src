@@ -1,618 +1,2111 @@
-interpreterModule = function(deps)
-	Parser = deps[0]
-
-	Interpreter = {}
-
-	Interpreter.Parser = Parser
-
-	Interpreter.binaryOps = {}
-	Interpreter.binaryOps["+"] = function(a, b)
-		return a + b
-	end function
-	Interpreter.binaryOps["-"] = function(a, b)
-		return a - b
-	end function
-	Interpreter.binaryOps["/"] = function(a, b)
-		return a / b
-	end function
-	Interpreter.binaryOps["*"] = function(a, b)
-		return a * b
-	end function
-	Interpreter.binaryOps["^"] = function(a, b)
-		return a ^ b
-	end function
-	Interpreter.binaryOps["<"] = function(a, b)
-		return a < b
-	end function
-	Interpreter.binaryOps[">"] = function(a, b)
-		return a > b
-	end function
-	Interpreter.binaryOps["%"] = function(a, b)
-		return a % b
-	end function
-	Interpreter.binaryOps["=="] = function(a, b)
-		return a == b
-	end function
-	Interpreter.binaryOps[">="] = function(a, b)
-		return a >= b
-	end function
-	Interpreter.binaryOps["<="] = function(a, b)
-		return a <= b
-	end function
-	Interpreter.binaryOps["!="] = function(a, b)
-		return a != b
-	end function
-	Interpreter.binaryOps["and"] = function(a, b)
-		return a and b
-	end function
-	Interpreter.binaryOps["or"] = function(a, b)
-		return a or b
-	end function
-
-	Interpreter.constructor = function(customValues, customMethods, logLevel, safeMode)
-		me = self
-
-		if (customValues == null) then customValues = {}
-		if (customMethods == null) then customMethods = {}
-		if (logLevel == null) then logLevel = 0
-		if (safeMode == null) then safeMode = false
-
-		me.global = {}
-		me.methods = {}
-		me.methods.print = @print
-
-		for item in customMethods
-			me.methods[item.key] = @item.value
-		end for
-
-		me.customValues = customValues
-		me.customValues.exports = {}
-		me.logLevel = logLevel
-		me.safeMode = safeMode
-		me.whitelist = {}
-
-		return me
-	end function
-
-	Interpreter.isValidCode = function(code)
-		me = self
-		parser = (new me.Parser).constructor(code)
-		node = parser.parseChunk()
-		return not parser.hasError()
-	end function
-
-	Interpreter.info = function(message)
-		me = self
-		if (me.logLevel == 0) then print("[INFO] " + message)
-		return null
-	end function
-
-	Interpreter.warn = function(message)
-		me = self
-		print("[WARNING] " + message)
-		return null
-	end function
-
-	Interpreter.hasExports = function()
-		me = self
-		return me.customValues.exports.len > 0
-	end function
-
-	Interpreter.getExports = function()
-		me = self
-		return me.customValues.exports
-	end function
-
-	Interpreter.hasPermission = function(handleType)
-		me = self
-
-		if (me.safeMode and not me.whitelist.hasIndex(handleType)) then
-			options = ["Are you sure you want to give access to <b>" + handleType + "</b>?"]
-			options.push(char(9) + "Y - For this instance")
-			options.push(char(9) + "X - For all instances in this execution")
-			options.push("To deny access press <b>any</b> other key")
-
-			stdin = user_input(options.join(char(10)) + char(10) + "> ").trim.lower
-
-			if (stdin == "x") then
-				print("Adding <b>" + handleType + "</b> to whitelist.")
-				me.whitelist[handleType] = true
-			else if (stdin != "y") then
-				return false
-			end if
-		end if
-
-		return true
-	end function
-
-	Interpreter.run = function(code)
-		me = self
-
-		parser = (new me.Parser).constructor(code)
-		node = parser.parseChunk()
-		
-		if (parser.hasError()) then
-			me.warn("Parser failed with following stack:")
-
-			for item in parser.status.errors
-				print(item)
-			end for
-			
-			return me
-		end if
-
-		me.digest(node)
-
-		return me
-	end function
-
-	Interpreter.setCustomValue = function(path, value)
-		me = self
-		traversalPath = []
-		pathType = typeof(path)
-
-		if (pathType == "pathList") then
-			traversalPath = traversalPath + path.paths
-		else if (pathType == "path") then
-			traversalPath = [path]
-		else if (pathType == "index") then
-			traversalPath = [path]
-		else
-			me.warn("Unexpected key value")
-			return null
-		end if
-
-		last = traversalPath.pop()
-		current = me.customValues
-
-		for item in traversalPath
-			itemType = typeof(item)
-
-			if (itemType != "path" and itemType != "index") then
-				me.warn("Unexpected path item type <b>" + itemType + "</b>")
-				return null
-			end if
-
-			if (current.hasIndex(item.value)) then
-				current = current[item.value]
-			else
-				current = null
-				me.warn("Key <b>" + item.value + "</b> does not exist")
-				break
-			end if
-		end for
-
-		if (current != null) then
-			current[last.value] = value
-		end if
-
-		return null
-	end function
-
-	Interpreter.nativeListMethods = ["hasIndex", "indexOf", "remove", "join", "push", "pop", "pull", "shuffle", "reverse", "sort", "indexes", "len", "sum", "values"]
-	Interpreter.alwaysLegitMethods = ["hasIndex", "indexOf", "remove", "indexes"]
-
-	Interpreter.hasMember = function(handle, method)
-		me = self
-		if (typeof(handle) == "list") then
-			return me.nativeListMethods.indexOf(method) != null or handle.hasIndex(method)
-		else if (me.alwaysLegitMethods.indexOf(method) != null) then
-			return true
-		end if
-		return handle.hasIndex(method) or (handle.hasIndex("__isa") and handle.__isa.hasIndex(method))
-	end function
-
-	Interpreter.handleTypes = ["map", "list", "string", "boolean", "number"]
-	Interpreter.riskHandles = ["metaxploit", "metaLib", "crypto", "router", "shell", "computer", "file", "ftpShell", "netSession", "target", "localStorage"]
-	Interpreter.requiresContext = ["metaxploit", "metaLib", "crypto", "router", "shell", "computer", "file", "ftpShell", "netSession", "target", "map", "list", "string", "toolkit", "localStorage"]
-	Interpreter.resolve = function(path)
-		me = self
-		traversalPath = []
-		pathType = typeof(path)
-
-		if (pathType == "pathList") then
-			traversalPath = traversalPath + path.paths
-		else if (pathType == "path") then
-			traversalPath = [path]
-		else
-			return path
-		end if
-
-		current = null
-
-		for item in traversalPath
-			itemType = typeof(item)
-
-			if (itemType == "path" and current == null) then
-				if (not me.customValues.hasIndex(item.value)) then
-					me.warn("Path <b>" + item.value + "</b> does not exist")
-					return null
-				end if
-
-				current = @me.customValues[item.value]
-
-				if (typeof(@current) == "function") then
-					current = current()
-				end if
-			else if ((me.handleTypes.indexOf(itemType) or me.riskHandles.indexOf(itemType)) and current == null) then
-				current = item
-			else if (itemType == "index" and current != null) then
-				if (not me.hasMember(current, item.value)) then
-					me.warn("Index <b>" + item.value + "</b> does not exist on handle <b>" + typeof(@current) + "</b>")
-					return null
-				end if
-				
-				current = @current[item.value]
-			else if (itemType == "path" and current != null) then
-				if (not me.hasMember(current, item.value)) then
-					me.warn("Path <b>" + item.value + "</b> does not exist on handle <b>" + typeof(@current) + "</b>")
-					return null
-				end if
-
-				previous = @current
-				current = @current[item.value]
-
-				if (typeof(@current) == "function") then
-					current = current(previous)
-				end if
-			end if
-
-			handleType = typeof(@current)
-
-			if (Interpreter.riskHandles.indexOf(handleType) != null) then
-				if (not me.hasPermission(handleType)) then return null
-			end if
-		end for
-
-		return current
-	end function
-
-	Interpreter.runCallExpression = function(path, args)
-		me = self
-		methods = me.methods
-		current = null
-		last = null
-		pathType = typeof(path)
-		requiresContext = false
-
-		if (pathType == "path") then
-			last = path
-		else if (pathType == "pathList") then
-			traversalPath = [] + path.paths
-			last = traversalPath.pop()
-
-			for item in traversalPath
-				itemType = typeof(item)
-
-				if (itemType == "path" and current == null) then
-					if (not me.customValues.hasIndex(item.value)) then
-						me.warn("Path <b>" + item.value + "</b> does not exist <b>" + typeof(@current) + "</b>")
-						return null
-					end if
-
-					current = @me.customValues[item.value]
-
-					if (typeof(@current) == "function") then
-						current = current()
-					end if 
-
-					if (me.requiresContext.indexOf(typeof(@current)) != null) then
-						requiresContext = true
-					end if
-				else if ((me.handleTypes.indexOf(itemType) or me.riskHandles.indexOf(itemType)) and current == null) then
-					current = item
-				else if (itemType == "index" and current != null) then
-					if (not me.hasMember(current, item.value)) then
-						me.warn("Index <b>" + item.value + "</b> does not exist on handle <b>" + typeof(@current) + "</b>")
-						return null
-					end if
-
-					previous = @current
-					current = @current[item.value]
-				else if (itemType == "path" and current != null) then
-					if (not me.hasMember(current, item.value)) then
-						me.warn("Path <b>" + item.value + "</b> does not exist on handle <b>" + typeof(@current) + "</b>")
-						return null
-					end if
-
-					previous = @current
-					current = @current[item.value]
-
-					if (typeof(@current) == "function") then
-						current = current(previous)
-					end if 
-
-					if (me.requiresContext.indexOf(typeof(@current)) != null) then
-						requiresContext = true
-					end if
-				end if
-
-				handleType = typeof(@current)
-
-				if (Interpreter.riskHandles.indexOf(handleType) != null) then
-					if (not me.hasPermission(handleType)) then return null
-				end if
-			end for
-		end if
-
-		if (current == null) then
-			current = methods
-		end if
-
-		if (not me.hasMember(@current, last.value)) then
-			me.warn("Path <b>" + last.value + "</b> does not exist on handle <b>" + typeof(@current) + "</b>")
-			return null
-		end if
-
-		previous = @current
-		current = @current[last.value]
-
-		if (typeof(@current) != "function") then
-			me.warn("<b>" + last.value + "</b> is not a function")
-			return null
-		end if
-
-		result = null
-		argsLength = args.len
-
-		me.info("Executing <b>" + last.value + "</b>")
-
-		if (requiresContext) then
-			me.info("Using <b>" + typeof(@previous) + "</b> as context")
-		else
-			me.info("Using <b>null</b> as context")
-		end if
-
-		if (argsLength == 0) then
-			if (requiresContext) then
-				result = current(previous)
-			else
-				result = current()
-			end if
-		else if (argsLength == 1) then
-			if (requiresContext) then
-				result = current(previous, args[0])
-			else
-				result = current(args[0])
-			end if
-		else if (argsLength == 2) then
-			if (requiresContext) then
-				result = current(previous, args[0], args[1])
-			else
-				result = current(args[0], args[1])
-			end if
-		else if (argsLength == 3) then
-			if (requiresContext) then
-				result = current(previous, args[0], args[1], args[2])
-			else
-				result = current(args[0], args[1], args[2])
-			end if
-		else if (argsLength == 4) then
-			if (requiresContext) then
-				result = current(previous, args[0], args[1], args[2], args[3])
-			else
-				result = current(args[0], args[1], args[2], args[3])
-			end if
-		else if (argsLength == 5) then
-			if (requiresContext) then
-				result = current(previous, args[0], args[1], args[2], args[3], args[4])
-			else
-				result = current(args[0], args[1], args[2], args[3], args[4])
-			end if
-		end if
-
-		me.info("Received <b>" + result + "</b>")
-
-		return result
-	end function
-
-	Interpreter.digest = function(node, parent)
-		me = self
-		context = { "node": node, "previous": parent }
-
-		debug("Digesting: " + node.type)
-
-		if (node.type == "Chunk") then
-			for line in node.body
-				me.digest(line, context)
-			end for
-			return me.customValues.exports
-		else if (node.type == "AssignmentStatement") then
-			left = me.digest(node.variable, context)
-			right = me.resolve(me.digest(node.init, context))
-			leftType = typeof(left)
-
-			if (leftType == "pathList" or leftType == "path") then
-				me.setCustomValue(left, right)
-			else
-				me.warn("Unexpected type <b>" + leftType + "</b> on assign left expr")
-			end if
-
-			return
-		else if (node.type == "BinaryExpression") then
-			left = me.resolve(me.digest(node.left, context))
-			right = me.resolve(me.digest(node.right, context))
-			op = @me.binaryOps[node.operator]
-
-			return op(left, right)
-		else if (node.type == "LogicalExpression") then
-			left = me.resolve(me.digest(node.left, context))
-
-			if (node.operator == "and" and not left) then
-				return false;
-			else if (node.operator == "or" and left) then
-				return true;
-			end if
-
-			right = me.resolve(me.digest(node.right, context))
-			op = @me.binaryOps[node.operator]
-
-			return op(left, right)
-		else if (node.type == "CallStatement") then
-			me.digest(node.expression, context)
-			return
-		else if (node.type == "CallExpression") then
-			path = me.digest(node.base, context)
-			args = []
-
-			for arg in node.arguments
-				args.push(me.resolve(me.digest(arg, context)))
-			end for
-
-			pathType = typeof(path)
-			result = null
-
-			if (pathType == "pathList" or pathType == "path") then
-				result = me.runCallExpression(path, args)
-			else
-				me.warn("Unexpected type <b>" + pathType + "</b> on path in call expression")
-				return
-			end if
-
-			return result
-		else if (node.type == "StringLiteral") then
-			return node.value
-		else if (node.type == "NumericLiteral") then
-			return node.value
-		else if (node.type == "BooleanLiteral") then
-			return node.value
-		else if (node.type == "NilLiteral") then
-			return null
-		else if (node.type == "MapConstructorExpression") then
-			resultMap = {}
-
-			for field in node.fields
-				key = me.digest(field.key, context)
-				value = me.resolve(me.digest(field.value, context))
-
-				resultMap[key] = value
-			end for
-
-			return resultMap
-		else if (node.type == "ListConstructorExpression") then
-			resultList = []
-
-			for field in node.fields
-				value = me.digest(field.value, context)
-				resultList.push(me.resolve(value))
-			end for
-
-			return resultList
-		else if (node.type == "IfStatement") then
-			context.isBreak = false
-			context.isContinue = false
-
-			for clause in node.clauses
-				if (clause.type == "IfClause" or clause.type == "ElseifClause") then
-					isValid = me.resolve(me.digest(clause.condition, context));
-
-					if (isValid) then
-						for line in clause.body
-							me.digest(line, context)
-							if (context.isBreak or context.isContinue) then
-								parent.isContinue = context.isContinue
-								parent.isBreak = context.isBreak
-								break
-							end if
-						end for
-						return
-					end if
-				else if (clause.type == "ElseClause") then
-					for line in clause.body
-						me.digest(line, context)
-						if (context.isBreak or context.isContinue) then
-							parent.isContinue = context.isContinue
-							parent.isBreak = context.isBreak
-							break
-						end if
-					end for
-					return
-				end if
-			end for
-			return
-		else if (node.type == "ForGenericStatement") then
-			variable = me.digest(node.variable)
-			iterator = me.resolve(me.digest(node.iterator))
-			context.isBreak = false
-
-			for item in iterator
-				context.isContinue = false
-				me.setCustomValue(variable, item)
-
-				for line in node.body
-					me.digest(line, context)
-					if (context.isContinue) then break
-					if (context.isBreak) then break
-				end for
-
-				if (context.isContinue) then continue
-				if (context.isBreak) then break
-			end for
-			return
-		else if (node.type == "WhileStatement") then
-			context.isBreak = false
-
-			while (me.resolve(me.digest(node.condition, context)))
-				context.isContinue = false
-
-				for line in node.body
-					me.digest(line, context)
-					if (context.isBreak or context.isContinue) then break
-				end for
-
-				if (context.isContinue) then continue
-				if (context.isBreak) then break
-			end while
-			return
-		else if (node.type == "ContinueStatement") then
-			parent.isContinue = true
-			return
-		else if (node.type == "BreakStatement") then
-			parent.isBreak = true
-			return
-		else if (node.type == "NegationExpression") then
-			return not me.resolve(me.digest(node.argument, context))
-		else if (node.type == "Identifier") then
-			return {"classID": "path", "value": node.value}
-		else if (node.type == "MemberExpression") then
-			expr = { "classID": "pathList", "paths": [] }
-			base = me.digest(node.base, context)
-			baseType = typeof(base)
-			identifier = me.digest(node.identifier, context)
-			identifierType = typeof(identifier)
-
-			if (baseType == "pathList") then
-				expr.paths = expr.paths + base.paths
-			else if (baseType == "path" or baseType == "index") then
-				expr.paths.push(base)
-			else if (me.handleTypes.indexOf(baseType) != null or me.riskHandles.indexOf(baseType) != null) then
-				expr.paths.push(base)
-			else
-				me.warn("Unexpected type <b>" + baseType + "</b> on base")
-				return
-			end if
-
-			if (identifierType == "pathList") then
-				expr.paths = expr.paths + identifier.paths
-			else if (identifierType == "path" or identifierType == "index") then
-				expr.paths.push(identifier)
-			else
-				me.warn("Unexpected type <b>" + identifierType + "</b> on identifier")
-				return
-			end if
-
-			return expr
-		else if (node.type == "IndexExpression") then
-			base = me.digest(node.base, context)
-			index = me.resolve(me.digest(node.index, context))
-			path = {"classID": "index", "value": index}
-			return { "classID": "pathList", "paths": [base, path] }
-		end if
-
-		me.warn("<b>" + node.type + "</b> is not supported")
-	end function
-
-	return Interpreter
+//Obfuscated and minified :)
+Z=function(I)
+л=I[0]
+н=I[1]
+ԃ=I[2]
+d=I[3]
+e={"members":{}}
+e.add=function(g,h)
+N=self
+N.members[g]=h
+return N
 end function
-
-injector.def("interpreter", ["parser"], @interpreterModule)
+e.isInstanceOf=function(k)
+N=self
+return N.members.hasIndex(typeof(@k))
+end function
+e.get=function(g)
+N=self
+if N.members.hasIndex(g) then
+return N.members[g]
+end if
+return null
+end function
+ԑ={"members":{}}
+ԑ.add=function(g,h)
+N=self
+N.members[g]=h
+return N
+end function
+ԑ.isInstanceOf=function(k)
+N=self
+return N.members.hasIndex(typeof(@k))
+end function
+ԑ.get=function(g)
+N=self
+if N.members.hasIndex(g) then
+return N.members[g]
+end if
+return null
+end function
+ԑ.ExpressionManager=e
+e.OperationManager=ԑ
+n={"members":{}}
+n.add=function(p)
+N=self
+N.members[p.id]=p
+return N
+end function
+n.get=function(g)
+N=self
+if N.members.hasIndex(g) then
+return N.members[g]
+end if
+return null
+end function
+s={"members":{}}
+s.add=function(p)
+N=self
+N.members[p.id]=p
+return N
+end function
+s.get=function(g)
+N=self
+if N.members.hasIndex(g) then
+return N.members[g]
+end if
+return null
+end function
+t={}
+e.add("AssignExpression",t)
+t.dynResolve=л
+t.ExpressionManager=e
+t.OperationManager=ԑ
+t.FunctionRegistry=n
+t.ScopeRegistry=s
+t.constructor=function(u,Ќ)
+N=self
+w=function(ԏ)
+N=self
+h=null
+y=null
+if (ԏ.type=="AssignmentStatement") then
+h={"left":N.build(ԏ.variable),"right":N.build(ԏ.init)}
+else
+h=N.cpsWalker.visit(ԏ)
+end if
+return h
+end function
+Ϫ={"cpsWalker":Ќ,"build":@w}
+N.classID="AssignExpression"
+N.ast=u
+N.expr=Ϫ.build(u)
+N.isExpression=true
+N.cpsWalker=Ќ
+return N
+end function
+t.get=function(Ϯ,ϯ)
+N=self
+ϰ=function(ԏ)
+N=self.instance
+ϲ=self.opc
+if not N.ExpressionManager.isInstanceOf(ԏ.left) then
+N.cpsWalker.raise(["Unexpected left assignment",N,ϳ].join(" "))
+end if
+ϳ=ԏ.left.get(ϲ,N.expr)
+ϵ=@ԏ.right
+if N.ExpressionManager.isInstanceOf(@ϵ) then
+ϵ=ϵ.get(ϲ)
+else if N.OperationManager.isInstanceOf(@ϵ) then
+ϵ=ϵ.get(ϲ)
+if (typeof(@ϵ)=="proxyFunction") then
+ϵ=N.FunctionRegistry.get(ϵ.id)
+end if
+϶=ϳ.path.len
+if ((typeof(@ϵ)=="FunctionOperation") and (typeof(ϳ.handle)!="null")) then
+Ϻ=typeof(ϳ.handle)
+if (((Ϻ!="string") and (Ϻ!="number")) and (Ϻ!="boolean")) then
+ϵ=ϵ.fork(ϳ.handle)
+end if
+end if
+else if (@ϵ==null) then
+N.cpsWalker.raise(["Unexpected right assignment",N,@ϵ].join(" "))
+end if
+if (typeof(ϳ.handle)!="null") then
+ϼ=typeof(ϳ.handle)
+if (ϼ=="proxyScope") then
+N.cpsWalker.debug({"type":"AssignExpression","description":"assign with operationContext","leftType":ϼ,"right":@ϵ})
+Ͼ=N.ScopeRegistry.get(ϳ.handle.id)
+Ͼ.set(ϳ.path,@ϵ)
+return true
+end if
+N.cpsWalker.debug({"type":"AssignExpression","description":"assign with handle","leftType":ϼ,"right":@ϵ})
+if (((ϼ!="string") and (ϼ!="boolean")) and (ϼ!="number")) then
+Ё=ϳ.path
+Ђ=ϳ.handle
+N.dynResolve.set(Ђ,Ё,@ϵ)
+return true
+else
+N.cpsWalker.raise(["Unexpected left assignment",N,ϳ].join(" "))
+end if
+end if
+N.cpsWalker.debug({"type":"AssignExpression","description":"assign with scope","path":ϳ.path,"right":@ϵ})
+ϲ.set(ϳ.path,@ϵ)
+return true
+end function
+І={"instance":N,"eval":@ϰ,"opc":Ϯ}
+N.cpsWalker.debug({"type":"AssignExpression","description":"get expr","line":N.ast.line,"expr":N.expr})
+return І.eval(N.expr)
+end function
+Љ={}
+e.add("BinaryNegatedExpression",Љ)
+Љ.dynResolve=л
+Љ.ExpressionManager=e
+Љ.OperationManager=ԑ
+Њ=function(Ћ)
+return Ћ
+end function
+Ѝ=function(Ћ)
+return (Ћ*-1)
+end function
+Љ.OPERATIONS={"+":@Њ,"-":@Ѝ}
+Љ.constructor=function(u,Ќ)
+N=self
+w=function(ԏ)
+N=self
+h=null
+if (ԏ.type=="BinaryNegatedExpression") then
+h={"classID":ԏ.type,"operator":ԏ.operator,"arg":N.build(ԏ.arg)}
+else
+h=N.cpsWalker.visit(ԏ)
+end if
+return h
+end function
+Ϫ={"cpsWalker":Ќ,"build":@w}
+N.classID="BinaryNegatedExpression"
+N.ast=u
+N.expr=Ϫ.build(u)
+N.isExpression=true
+N.cpsWalker=Ќ
+return N
+end function
+Љ.get=function(Ϯ,ϯ)
+N=self
+ϰ=function(ԏ)
+N=self.instance
+Ϯ=self.opc
+if (typeof(ԏ)=="BinaryNegatedExpression") then
+А=self.eval(ԏ.arg)
+p=@N.OPERATIONS[ԏ.operator]
+return p(А)
+end if
+if (N.ExpressionManager.isInstanceOf(ԏ) or N.OperationManager.isInstanceOf(ԏ)) then
+return ԏ.get(Ϯ)
+end if
+return ԏ
+end function
+І={"instance":N,"eval":@ϰ,"opc":Ϯ}
+N.cpsWalker.debug({"type":"BinaryNegatedExpression","description":"get expr","line":N.ast.line,"expr":N.expr})
+return І.eval(N.expr)
+end function
+В={}
+e.add("CallExpression",В)
+В.dynResolve=л
+В.dynApply=d
+В.ExpressionManager=e
+В.OperationManager=ԑ
+В.constructor=function(u,Ќ)
+N=self
+w=function(ԏ)
+N=self
+h=null
+y=null
+if (ԏ.type=="CallStatement") then
+h=N.build(ԏ.expression)
+else if (ԏ.type=="CallExpression") then
+Г=[]
+for Д in ԏ.arguments
+Г.push(N.cpsWalker.visit(Д))
+end for
+h={"classID":"call","path":N.build(ԏ.base),"args":Г}
+else
+h=N.cpsWalker.visit(ԏ)
+end if
+return h
+end function
+Ϫ={"cpsWalker":Ќ,"build":@w}
+N.classID="CallExpression"
+N.ast=u
+N.expr=Ϫ.build(u)
+N.isExpression=true
+N.cpsWalker=Ќ
+return N
+end function
+В.get=function(Ϯ,ϯ)
+N=self
+К=function(Г)
+N=self.instance
+ϲ=self.opc
+Л=[]
+for Д in Г
+N.cpsWalker.debug({"type":"CallExpression","description":"resolve arg","item":@Д})
+if (N.ExpressionManager.isInstanceOf(@Д) or N.OperationManager.isInstanceOf(@Д)) then
+Л.push(Д.get(ϲ))
+else
+Л.push(@Д)
+end if
+end for
+return Л
+end function
+ϰ=function(ԏ)
+N=self.instance
+ϲ=self.forkedOpc
+if N.ExpressionManager.isInstanceOf(ԏ) then
+return ԏ.get(ϲ)
+end if
+Г=self.resolveArgs(ԏ.args)
+N.cpsWalker.debug({"type":"CallExpression","description":"resolved args","args":Г})
+if (typeof(ԏ.path)=="call") then
+Н=self.eval(ԏ.path)
+if N.OperationManager.isInstanceOf(Н) then
+ϲ.setMemory("args",Г)
+return Н.run(ϲ)
+else
+N.cpsWalker.raise(["CallExpression","Unexpected handle result",N,Н].join(" "))
+end if
+end if
+Т=ԏ.path.get(ϲ,N.expr)
+N.cpsWalker.debug({"type":"CallExpression","description":"get path expr result","pathExpr":Т})
+Ϻ=typeof(@Т.handle)
+if (Ϻ!="null") then
+Ф=N.dynResolve.getCallable(@Т.handle,Т.path)
+N.cpsWalker.debug({"type":"CallExpression","description":"handle callable","callable":Ф})
+if N.OperationManager.isInstanceOf(@Ф.origin) then
+ϲ.setMemory("args",Г)
+return Ф.origin.run(ϲ)
+else if (typeof(@Ф.origin)=="function") then
+return N.dynApply.apply(@Ф.origin,Г,Ф.context)
+end if
+N.cpsWalker.raise({"type":"CallExpression","description":"Unexpected handle call","callable":Ф})
+end if
+Ф=ϲ.getCallable(Т.path)
+N.cpsWalker.debug({"type":"CallExpression","description":"operationContext","callable":Ф})
+ϲ.setMemory("args",Г)
+if N.OperationManager.isInstanceOf(@Ф.origin) then
+Л=Ф.origin.run(ϲ)
+return Л
+else if (typeof(@Ф.origin)=="function") then
+return N.dynApply.apply(@Ф.origin,Г,Ф.context)
+end if
+return @Ф.origin
+end function
+І={"instance":N,"eval":@ϰ,"resolveArgs":@К,"opc":Ϯ,"forkedOpc":Ϯ.fork("CALL","TEMPORARY")}
+N.cpsWalker.debug({"type":"CallExpression","description":"get expr","line":N.ast.line,"expr":N.expr})
+return І.eval(N.expr)
+end function
+Я={}
+e.add("ListExpression",Я)
+Я.dynResolve=л
+Я.ExpressionManager=e
+Я.OperationManager=ԑ
+Я.constructor=function(u,Ќ)
+N=self
+w=function(ԏ)
+N=self
+h=null
+if (ԏ.type=="ListConstructorExpression") then
+а=[]
+for Д in ԏ.fields
+а.push(N.cpsWalker.visit(Д.value))
+end for
+h={"classID":"listexpr","values":а}
+else
+h=N.cpsWalker.visit(ԏ)
+end if
+return h
+end function
+Ϫ={"cpsWalker":Ќ,"build":@w}
+N.classID="ListExpression"
+N.ast=u
+N.expr=Ϫ.build(u)
+N.isExpression=true
+N.cpsWalker=Ќ
+return N
+end function
+Я.get=function(Ϯ,ϯ)
+N=self
+ϰ=function(ԏ)
+N=self.instance
+Ϯ=self.opc
+г=([]+ԏ)
+д=[]
+е=г.pull
+while (typeof(е)!="null")
+if (typeof(е)=="listexpr") then
+д.push(N.eval(е.values))
+else if N.ExpressionManager.isInstanceOf(е) then
+д.push(е.get(Ϯ))
+else
+д.push(е)
+end if
+е=г.pull
+end while
+return д
+end function
+І={"instance":N,"eval":@ϰ,"opc":Ϯ}
+N.cpsWalker.debug({"type":"ListExpression","description":"get expr","line":N.ast.line,"expr":N.expr})
+return І.eval(N.expr.values)
+end function
+й={}
+e.add("LogicalAndBinaryExpression",й)
+й["+"]=function(к,м)
+return (к+м)
+end function
+й["-"]=function(к,м)
+return (к-м)
+end function
+й["/"]=function(к,м)
+return (к/м)
+end function
+й["*"]=function(к,м)
+return (к*м)
+end function
+й["<"]=function(к,м)
+return (к<м)
+end function
+й[">"]=function(к,м)
+return (к>м)
+end function
+й["%"]=function(к,м)
+return (к%м)
+end function
+й[">="]=function(к,м)
+return (к>=м)
+end function
+й["=="]=function(к,м)
+return (к==м)
+end function
+й["<="]=function(к,м)
+return (к<=м)
+end function
+й["=="]=function(к,м)
+return (к==м)
+end function
+й["<="]=function(к,м)
+return (к<=м)
+end function
+й["!="]=function(к,м)
+return (к!=м)
+end function
+й["and"]=function(к,м)
+return (к and м)
+end function
+й["or"]=function(к,м)
+return (к or м)
+end function
+й["^"]=function(к,м)
+return bitwise("^",к,м)
+end function
+й["|"]=function(к,м)
+return bitwise("|",к,м)
+end function
+й["<<"]=function(к,м)
+return bitwise("<<",к,м)
+end function
+й[">>"]=function(к,м)
+return bitwise(">>",к,м)
+end function
+й[">>>"]=function(к,м)
+return bitwise(">>>",к,м)
+end function
+й["&"]=function(к,м)
+return bitwise("&",к,м)
+end function
+й.OPERATIONS=й
+й.dynApply=d
+й.dynResolve=л
+й.ExpressionManager=e
+й.OperationManager=ԑ
+й.constructor=function(u,Ќ)
+N=self
+w=function(ԏ)
+N=self
+h=null
+if ((ԏ.type=="LogicalExpression") or (ԏ.type=="BinaryExpression")) then
+h={"classID":ԏ.type,"operator":ԏ.operator,"left":N.build(ԏ.left),"right":N.build(ԏ.right)}
+else
+h=N.cpsWalker.visit(ԏ)
+end if
+return h
+end function
+Ϫ={"cpsWalker":Ќ,"build":@w}
+N.classID="LogicalAndBinaryExpression"
+N.ast=u
+N.expr=Ϫ.build(u)
+N.isExpression=true
+N.cpsWalker=Ќ
+return N
+end function
+й.get=function(Ϯ,ϯ)
+N=self
+ϰ=function(ԏ)
+N=self.instance
+Ϯ=self.opc
+ϳ=null
+ϵ=null
+z=typeof(ԏ)
+N.cpsWalker.debug({"type":"LogicalAndBinaryExpression","description":"type","val":z})
+if (z=="BinaryExpression") then
+ϳ=self.eval(ԏ.left)
+ϵ=self.eval(ԏ.right)
+return N.dynApply.apply(N.OPERATIONS[ԏ.operator],[ϳ,ϵ])
+else if (z=="LogicalExpression") then
+ϳ=self.eval(ԏ.left)
+if ((typeof(ϳ)=="list") and not ϳ) then
+ϳ=false
+end if
+if ((ԏ.operator=="and") and not ϳ) then
+return false
+else if ((ԏ.operator=="or") and ϳ) then
+return true
+end if
+ϵ=self.eval(ԏ.right)
+return N.dynApply.apply(N.OPERATIONS[ԏ.operator],[ϳ,ϵ])
+end if
+if (N.ExpressionManager.isInstanceOf(ԏ) or N.OperationManager.isInstanceOf(ԏ)) then
+return ԏ.get(Ϯ)
+end if
+return ԏ
+end function
+І={"instance":N,"eval":@ϰ,"opc":Ϯ}
+N.cpsWalker.debug({"type":"LogicalAndBinaryExpression","description":"get expr","line":N.ast.line,"expr":N.expr})
+return І.eval(N.expr)
+end function
+п={}
+e.add("MapExpression",п)
+п.dynResolve=л
+п.ExpressionManager=e
+п.OperationManager=ԑ
+п.constructor=function(u,Ќ)
+N=self
+w=function(ԏ)
+N=self
+h=null
+if (ԏ.type=="MapConstructorExpression") then
+а=[]
+for Д in ԏ.fields
+а.push({"key":N.cpsWalker.visit(Д.key),"value":N.build(Д.value)})
+end for
+h={"classID":"mapexpr","values":а}
+else
+h=N.cpsWalker.visit(ԏ)
+end if
+return h
+end function
+Ϫ={"cpsWalker":Ќ,"build":@w}
+N.classID="MapExpression"
+N.ast=u
+N.expr=Ϫ.build(u)
+N.isExpression=true
+N.cpsWalker=Ќ
+return N
+end function
+п.get=function(Ϯ,ϯ)
+N=self
+ϰ=function(ԏ)
+N=self.instance
+Ϯ=self.opc
+г=([]+ԏ)
+р={}
+е=г.pull
+while е
+g=null
+б=null
+if (typeof(е.key)=="string") then
+g=е.key
+else
+N.cpsWalker.raise(["Unexpected key",N,е.key].join(" "))
+end if
+if (typeof(е.value)=="mapexpr") then
+б=self.eval(е.value.values)
+else if N.ExpressionManager.isInstanceOf(е.value) then
+б=е.value.get(Ϯ)
+else
+б=е.value
+end if
+р[g]=б
+е=г.pull
+end while
+return р
+end function
+І={"instance":N,"eval":@ϰ,"opc":Ϯ}
+N.cpsWalker.debug({"type":"MapExpression","description":"get expr","line":N.ast.line,"expr":N.expr})
+return І.eval(N.expr.values)
+end function
+у={}
+e.add("PathExpression",у)
+у.dynResolve=л
+у.dynApply=d
+у.ExpressionManager=e
+у.OperationManager=ԑ
+у.FunctionRegistry=n
+у.ScopeRegistry=s
+у.constructor=function(u,Ќ)
+N=self
+ф=function(Ϭ,Ћ)
+if (typeof(Ћ)=="list") then
+return (Ϭ+Ћ)
+end if
+return (Ϭ+[Ћ])
+end function
+w=function(ԏ)
+N=self
+h=[]
+if (ԏ.type=="MemberExpression") then
+h=N.append(h,N.build(ԏ.base))
+h=N.append(h,N.build(ԏ.identifier))
+else if (ԏ.type=="IndexExpression") then
+h=N.append(h,N.build(ԏ.base))
+ц=N.dynResolve.get(ԏ.index,"type")
+if (ц=="SliceExpression") then
+h=N.append(h,{"classID":"slice","left":N.build(ԏ.index.left),"right":N.build(ԏ.index.right)})
+else
+h=N.append(h,{"classID":"index","value":N.build(ԏ.index)})
+end if
+else if (ԏ.type=="Identifier") then
+h=N.append(h,{"classID":"path","value":ԏ.value})
+else
+h=N.append(h,N.cpsWalker.visit(ԏ))
+end if
+return h
+end function
+Ϫ={"dynResolve":N.dynResolve,"cpsWalker":Ќ,"build":@w,"append":@ф}
+N.classID="PathExpression"
+N.ast=u
+N.expr=Ϫ.build(u)
+N.isExpression=true
+N.cpsWalker=Ќ
+return N
+end function
+у.getByIndex=function(ч)
+return self.expr[ч]
+end function
+у.get=function(Ϯ,ϯ)
+N=self
+ϲ=Ϯ
+ϰ=function(ԏ)
+N=self.instance
+ϲ=self.opc
+г=([]+ԏ)
+ь=[]
+э=0
+Ϲ=null
+е=г.pull
+while е
+ю=typeof(е)
+if N.ExpressionManager.isInstanceOf(е) then
+Ϲ=е.get(ϲ,N.expr)
+else if N.OperationManager.isInstanceOf(е) then
+Ϲ=е.get(ϲ)
+else if (ю=="path") then
+N.cpsWalker.debug({"type":"PathExpression","description":"current path","path":е.value})
+if ((е.value=="self") and (э==0)) then
+ѐ=ϲ.getMemory("functionContext")
+Ђ=N.dynResolve.get(ѐ,"context")
+if (typeof(Ђ)!="null") then
+Ϲ=ѐ.context
+else
+N.cpsWalker.raise(["Unexpected self",N,е].join(" "))
+end if
+else
+ь.push(е.value)
+if (г.len>0) then
+Ϻ=typeof(@Ϲ)
+if (Ϻ!="null") then
+Ц=Ϲ
+else
+Ц=@ϲ
+end if
+ђ=typeof(@Ц)
+N.cpsWalker.debug({"type":"PathExpression","description":"traversed","origin":@Ц,"originType":ђ})
+if (ђ=="proxyScope") then
+Ͼ=N.ScopeRegistry.get(Ц.id)
+Ϲ=Ͼ.get(ь)
+else if ((ђ=="operationContext") or N.ExpressionManager.isInstanceOf(@Ц)) then
+Ϲ=Ц.get(ь)
+else
+Ф=N.dynResolve.getCallable(@Ц,ь)
+ђ=typeof(@Ф.origin)
+N.cpsWalker.debug({"type":"PathExpression","description":"traversed","callable":Ф})
+if (ђ=="function") then
+Ϲ=N.dynApply.apply(@Ф.origin,null,Ф.context)
+else if (ђ=="operationContext") then
+Ϲ=Ф.origin.createProxy
+else
+Ϲ=@Ф.origin
+end if
+end if
+ь=[]
+end if
+end if
+else if (ю=="index") then
+е=е.value[0]
+if N.ExpressionManager.isInstanceOf(е) then
+б=е.get(ϲ)
+ь.push(б)
+else if (typeof(е)=="path") then
+б=ϲ.get(е.value)
+ь.push(б)
+else
+ь.push(е)
+end if
+else if (ю=="slice") then
+if not Ϲ then
+Ϲ=ϲ.get(ь)
+ь=[]
+else if (typeof(Ϲ)!="list") then
+N.cpsWalker.raise("Invalid type for slice",N,Ϲ)
+end if
+ϳ=е.left[0]
+if N.ExpressionManager.isInstanceOf(ϳ) then
+ϳ=ϳ.get(ϲ)
+end if
+ϵ=е.right[0]
+if N.ExpressionManager.isInstanceOf(ϵ) then
+ϵ=ϵ.get(ϲ)
+end if
+Ϲ=Ϲ[ϳ:ϵ]
+else
+Ϲ=е
+end if
+э=(э+1)
+е=г.pull
+end while
+return {"handle":Ϲ,"path":ь}
+end function
+І={"instance":N,"eval":@ϰ,"opc":ϲ}
+N.cpsWalker.debug({"type":"PathExpression","description":"get expr","line":N.ast.line,"expr":N.expr})
+ї=І.eval(N.expr)
+N.cpsWalker.debug({"type":"PathExpression","description":"result","result":ї,"parent":ϯ})
+if not ϯ then
+Ϻ=typeof(ї.handle)
+if (Ϻ!="null") then
+if (ї.path.len==0) then
+if (typeof(@ї.handle)=="operationContext") then
+return ї.handle.createProxy
+end if
+return ї.handle
+end if
+Ф=null
+N.cpsWalker.debug({"type":"PathExpression","description":"get callable","callable":Ϻ})
+if (Ϻ=="proxyScope") then
+љ=N.ScopeRegistry.get(ї.handle.id)
+Ф=љ.getCallable(ї.path)
+else
+Ф=N.dynResolve.getCallable(ї.handle,ї.path)
+end if
+N.cpsWalker.debug({"type":"PathExpression","description":"is path with handle callable","callable":Ф})
+if N.OperationManager.isInstanceOf(@Ф.origin) then
+return Ф.origin.run(ϲ)
+else if (typeof(@Ф.origin)!="function") then
+return Ф.origin
+end if
+return N.dynApply.apply(@Ф.origin,null,Ф.context)
+end if
+б=ϲ.get(ї.path)
+N.cpsWalker.debug({"type":"PathExpression","description":"get with opc","value":@б,"opc":ϲ})
+if (typeof(@б)=="proxyFunction") then
+б=N.FunctionRegistry.get(б.id)
+end if
+њ=typeof(@б)
+if (њ=="function") then
+Ф=ϲ.getCallable(ї.path)
+return N.dynApply.apply(@Ф.origin,null,Ф.context)
+else if N.OperationManager.isInstanceOf(б) then
+return б.run(ϲ)
+else if ((њ=="operationContext") or (њ=="scope")) then
+return б.createProxy
+end if
+return б
+end if
+return ї
+end function
+ћ={}
+ԑ.add("ArgumentOperation",ћ)
+ћ.dynResolve=л
+ћ.ExpressionManager=e
+ћ.OperationManager=ԑ
+ћ.constructor=function(u,Ќ)
+N=self
+N.classID="ArgumentOperation"
+N.ast=u
+N.stack=[]
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+ћ.get=function(Ϯ)
+N=self
+ќ=N.stack
+Г=[]
+for ў in N.stack
+if N.ExpressionManager.isInstanceOf(ў) then
+Г.push(ў.get(Ϯ,N))
+else
+Г.push(ў)
+end if
+end for
+return Г
+end function
+џ={}
+ԑ.add("BodyOperation",џ)
+џ.dynResolve=л
+џ.ExpressionManager=e
+џ.OperationManager=ԑ
+џ.constructor=function(u,Ќ)
+N=self
+N.classID="BodyOperation"
+N.ast=u
+N.stack=[]
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+џ.run=function(Ϯ)
+N=self
+Ѡ={}
+Ѡ.is=function()
+return false
+end function
+if (Ϯ.type=="LOOP") then
+Ѡ.context=Ϯ.getMemory("loopContext")
+Ѡ.is=function()
+return (self.context.isBreak or self.context.isContinue)
+end function
+else if (Ϯ.type=="FUNCTION") then
+Ѡ.context=Ϯ.getMemory("functionContext")
+Ѡ.is=function()
+return self.context.isReturn
+end function
+end if
+for ў in N.stack
+if N.ExpressionManager.isInstanceOf(ў) then
+ў.get(Ϯ)
+else
+ў.run(Ϯ)
+end if
+if Ѡ.is then
+break
+end if
+end for
+end function
+Ѧ={}
+ԑ.add("BreakOperation",Ѧ)
+Ѧ.constructor=function(u,Ќ)
+N=self
+N.classID="BreakOperation"
+N.ast=u
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+Ѧ.run=function(Ϯ)
+N=self
+ѧ=Ϯ.getMemory("loopContext")
+ѧ.isBreak=true
+end function
+Ѩ={}
+ԑ.add("ContinueOperation",Ѩ)
+Ѩ.constructor=function(u,Ќ)
+N=self
+N.classID="ContinueOperation"
+N.ast=u
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+Ѩ.run=function(Ϯ)
+N=self
+ѧ=Ϯ.getMemory("loopContext")
+ѧ.isContinue=true
+end function
+Ѫ={}
+ԑ.add("DebuggerOperation",Ѫ)
+Ѫ.constructor=function(u,Ќ)
+N=self
+N.classID="DebuggerOperation"
+N.ast=u
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+Ѫ.run=function(Ϯ)
+ѫ=Ϯ.get("__debugger")
+ѫ(Ϯ)
+end function
+Ѭ={}
+ԑ.add("ElseIfOperation",Ѭ)
+Ѭ.constructor=function(u,Ќ)
+N=self
+N.classID="ElseIfOperation"
+N.ast=u
+N.condition=null
+N.body=null
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+ѯ={}
+ԑ.add("ElseOperation",ѯ)
+ѯ.constructor=function(u,Ќ)
+N=self
+N.classID="ElseOperation"
+N.ast=u
+N.body=null
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+Ѱ={}
+ԑ.add("ForOperation",Ѱ)
+Ѱ.constructor=function(u,Ќ)
+N=self
+N.classID="ForOperation"
+N.ast=u
+N.variable=null
+N.iterator=null
+N.body=null
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+Ѱ.run=function(Ϯ)
+N=self
+ϲ=Ϯ.fork("LOOP","TEMPORARY")
+_=N.variable.get(ϲ,N)
+ѱ=N.iterator.get(ϲ)
+ѧ={"isBreak":false,"isContinue":false}
+ϲ.setMemory("loopContext",ѧ)
+for б in ѱ
+ѧ.isContinue=false
+ϲ.set(_.path,б)
+N.body.run(ϲ)
+if ѧ.isContinue then
+continue
+else if ѧ.isBreak then
+break
+end if
+end for
+end function
+Ѳ={}
+ԑ.add("FunctionOperation",Ѳ)
+Ѳ.Base=Ѳ
+Ѳ.FunctionRegistry=n
+Ѳ.constructor=function(u,Ќ)
+N=self
+N.id=md5(str(time))
+N.classID="FunctionOperation"
+N.ast=u
+N.args=null
+N.body=null
+N.isOperation=true
+N.context=null
+N.isFunction=true
+N.cpsWalker=Ќ
+N.FunctionRegistry.add(N)
+return N
+end function
+Ѳ.getType=function()
+return "function"
+end function
+Ѳ.fork=function(Ђ)
+N=self
+ѷ=(new N.Base).constructor(N.ast,N.cpsWalker)
+ѷ.args=N.args
+ѷ.body=N.body
+ѷ.context=Ђ
+return ѷ
+end function
+Ѳ.createProxy=function()
+N=self
+return {"classID":"proxyFunction","id":N.id}
+end function
+Ѳ.get=function(Ϯ)
+return self
+end function
+Ѳ.toString=function()
+return "Function"
+end function
+Ѳ.run=function(Ϯ)
+N=self
+ϲ=Ϯ.fork("FUNCTION","DEFAULT")
+ѹ=Ϯ.getMemory("args")
+Г=N.args.get(ϲ)
+Ѻ={}
+Л=null
+ѐ={"value":Л,"isReturn":false,"context":N.context}
+ϲ.setMemory("functionContext",ѐ)
+ч=0
+Ѽ=Г.len
+while (ч<Ѽ)
+if ѹ.hasIndex(ч) then
+ϲ.set(Г[ч].path[0],ѹ[ч])
+end if
+ч=(ч+1)
+end while
+N.body.run(ϲ)
+return ѐ.value
+end function
+Ѿ={}
+ԑ.add("IfStatementOperation",Ѿ)
+Ѿ.constructor=function(u,Ќ)
+N=self
+N.classID="IfStatementOperation"
+N.ast=u
+N.clauses=[]
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+Ѿ.run=function(Ϯ)
+N=self
+ѿ=N.clauses
+for Ҁ in ѿ
+ҁ=typeof(Ҁ)
+if ((ҁ=="IfOperation") or (ҁ=="ElseIfOperation")) then
+҃=Ҁ.condition.get(Ϯ)
+if ҃ then
+Ҁ.body.run(Ϯ)
+return 
+end if
+else if (ҁ=="ElseOperation") then
+Ҁ.body.run(Ϯ)
+return 
+else
+N.cpsWalker.raise(["Invalid operation in if statement.",N,Ҁ].join(" "))
+end if
+end for
+end function
+҅={}
+ԑ.add("IfOperation",҅)
+҅.constructor=function(u,Ќ)
+N=self
+N.classID="IfOperation"
+N.ast=u
+N.condition=null
+N.body=null
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+҇={}
+ԑ.add("NewOperation",҇)
+҇.dynResolve=л
+҇.ExpressionManager=e
+҇.OperationManager=ԑ
+҇.constructor=function(u,Ќ)
+N=self
+N.classID="NewOperation"
+N.ast=u
+N.arg=null
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+҇.get=function(Ϯ)
+N=self
+А=N.arg
+N.cpsWalker.debug({"type":"NewOperation","description":"start","arg":@А})
+if N.ExpressionManager.isInstanceOf(А) then
+А=А.get(Ϯ)
+end if
+if (typeof(А)!="map") then
+N.cpsWalker.raise(["Unexpected type for new operator",N,А].join(" "))
+end if
+҉={}
+N.cpsWalker.debug({"type":"NewOperation","description":"start creation","arg":@А})
+for Д in А
+if (typeof(Д.value)=="FunctionOperation") then
+҉[Д.key]=Д.value.fork(҉)
+else
+҉[Д.key]=Д.value
+end if
+end for
+return (new ҉)
+end function
+ҋ={}
+ԑ.add("NotOperation",ҋ)
+ҋ.dynResolve=л
+ҋ.ExpressionManager=e
+ҋ.OperationManager=ԑ
+ҋ.constructor=function(u,Ќ)
+N=self
+N.classID="NotOperation"
+N.ast=u
+N.arg=null
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+ҋ.get=function(Ϯ)
+N=self
+А=N.arg
+if N.ExpressionManager.isInstanceOf(А) then
+А=А.get(Ϯ)
+end if
+return not А
+end function
+Ҍ={}
+ԑ.add("ReferenceOperation",Ҍ)
+Ҍ.dynResolve=л
+Ҍ.ExpressionManager=e
+Ҍ.OperationManager=ԑ
+Ҍ.constructor=function(u,Ќ)
+N=self
+N.classID="ReferenceOperation"
+N.ast=u
+N.arg=null
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+Ҍ.get=function(Ϯ)
+N=self
+А=@N.arg
+if N.ExpressionManager.isInstanceOf(@А) then
+А=А.get(Ϯ,N)
+else
+N.cpsWalker.raise(["Unexpected reference",N].join(" "))
+end if
+N.cpsWalker.debug({"type":"ReferenceOperation","description":"handle","arg":@А})
+Ϲ=N.dynResolve.get(@А,"handle")
+Ϻ=typeof(@Ϲ)
+N.cpsWalker.debug({"type":"ReferenceOperation","description":"handle type after resolve","handleType":Ϻ})
+if (Ϻ!="null") then
+if (((Ϻ!="string") and (Ϻ!="number")) and (Ϻ!="boolean")) then
+ґ=N.dynResolve.get(@Ϲ,А.path)
+if (typeof(@ґ)=="FunctionOperation") then
+return ґ.createProxy
+end if
+return @ґ
+end if
+N.cpsWalker.raise({"type":"ReferenceOperation","description":"Unexpected handle in reference statement","handle":Ϲ})
+end if
+return Ϯ.get(А.path)
+end function
+Ғ={}
+ԑ.add("ReturnOperation",Ғ)
+Ғ.ExpressionManager=e
+Ғ.OperationManager=ԑ
+Ғ.constructor=function(u,Ќ)
+N=self
+N.classID="ReturnOperation"
+N.ast=u
+N.arg=null
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+Ғ.run=function(Ϯ)
+N=self
+ѐ=Ϯ.getMemory("functionContext")
+А=N.arg
+if N.ExpressionManager.isInstanceOf(А) then
+А=N.arg.get(Ϯ)
+else if N.OperationManager.isInstanceOf(А) then
+А=N.arg.get(Ϯ)
+end if
+ѐ.value=А
+ѐ.isReturn=true
+end function
+ғ={}
+ԑ.add("TopOperation",ғ)
+ғ.constructor=function()
+N=self
+N.classID="TopOperation"
+N.body=null
+N.isOperation=true
+return N
+end function
+ғ.run=function(Ϯ)
+N=self
+ϲ=Ϯ.fork("GLOBAL","DEFAULT")
+ϲ.extend({"globals":ϲ.createProxy})
+N.body.run(ϲ)
+return ϲ
+end function
+ҕ={}
+ԑ.add("WhileOperation",ҕ)
+ҕ.ExpressionManager=e
+ҕ.OperationManager=ԑ
+ҕ.constructor=function(u,Ќ)
+N=self
+N.classID="WhileOperation"
+N.ast=u
+N.condition=null
+N.body=null
+N.isOperation=true
+N.cpsWalker=Ќ
+return N
+end function
+ҕ.run=function(Ϯ)
+N=self
+ϲ=Ϯ.fork("LOOP","TEMPORARY")
+ѧ={"isBreak":false,"isContinue":false}
+ѭ={"instance":N}
+ѭ.is=function()
+N=self.instance
+if N.ExpressionManager.isInstanceOf(N.condition) then
+return N.condition.get(ϲ)
+end if
+return N.condition
+end function
+ϲ.setMemory("loopContext",ѧ)
+while ѭ.is
+ѧ.isContinue=false
+N.body.run(ϲ)
+if ѧ.isContinue then
+continue
+else if ѧ.isBreak then
+break
+end if
+end while
+end function
+Ҙ={}
+Ҙ.AssignmentStatement=function(Ќ,Д)
+t=Ќ.ExpressionManager.get("AssignExpression")
+return (new t).constructor(Д,Ќ)
+end function
+Ҙ.MemberExpression=function(Ќ,Д)
+у=Ќ.ExpressionManager.get("PathExpression")
+return (new у).constructor(Д,Ќ)
+end function
+Ҙ.FunctionDeclaration=function(Ќ,Д)
+Ѳ=Ќ.OperationManager.get("FunctionOperation")
+ћ=Ќ.OperationManager.get("ArgumentOperation")
+џ=Ќ.OperationManager.get("BodyOperation")
+p=(new Ѳ).constructor(Д,Ќ)
+Г=(new ћ).constructor(Д.parameters,Ќ)
+Ѯ=(new џ).constructor(Д.body,Ќ)
+for ҟ in Д.parameters
+Г.stack.push(Ќ.visit(ҟ))
+end for
+for Ҡ in Д.body
+Ѯ.stack.push(Ќ.visit(Ҡ))
+end for
+p.args=Г
+p.body=Ѯ
+return p
+end function
+Ҙ.MapConstructorExpression=function(Ќ,Д)
+п=Ќ.ExpressionManager.get("MapExpression")
+return (new п).constructor(Д,Ќ)
+end function
+Ҙ.Identifier=function(Ќ,Д)
+у=Ќ.ExpressionManager.get("PathExpression")
+return (new у).constructor(Д,Ќ)
+end function
+Ҙ.ReturnStatement=function(Ќ,Д)
+Ғ=Ќ.OperationManager.get("ReturnOperation")
+p=(new Ғ).constructor(Д,Ќ)
+p.arg=Ќ.visit(Д.arguments[0])
+return p
+end function
+Ҙ.NumericLiteral=function(Ќ,Д)
+return Д.value
+end function
+Ҙ.WhileStatement=function(Ќ,Д)
+ҕ=Ќ.OperationManager.get("WhileOperation")
+џ=Ќ.OperationManager.get("BodyOperation")
+p=(new ҕ).constructor(Д,Ќ)
+Ѯ=(new џ).constructor(Д.body,Ќ)
+p.condition=Ќ.visit(Д.condition)
+for Ҡ in Д.body
+Ѯ.stack.push(Ќ.visit(Ҡ))
+end for
+p.body=Ѯ
+return p
+end function
+Ҙ.StringLiteral=function(Ќ,Д)
+return Д.value
+end function
+Ҙ.IndexExpression=function(Ќ,Д)
+у=Ќ.ExpressionManager.get("PathExpression")
+return (new у).constructor(Д,Ќ)
+end function
+Ҙ.FeatureEnvarExpression=function(Ќ,Д)
+exit("Not supported")
+end function
+Ҙ.IfShortcutStatement=function(Ќ,Д)
+Ѿ=Ќ.OperationManager.get("IfStatementOperation")
+p=(new Ѿ).constructor(Д,Ќ)
+for ҭ in Д.clauses
+p.clauses.push(Ќ.visit(ҭ))
+end for
+return p
+end function
+Ҙ.IfShortcutClause=function(Ќ,Д)
+҅=Ќ.OperationManager.get("IfOperation")
+џ=Ќ.OperationManager.get("BodyOperation")
+p=(new ҅).constructor(Д,Ќ)
+Ѯ=(new џ).constructor(Д.statement,Ќ)
+p.condition=Ќ.visit(Д.condition)
+Ѯ.stack.push(Ќ.visit(Д.statement))
+p.body=Ѯ
+return p
+end function
+Ҙ.ElseifShortcutClause=function(Ќ,Д)
+Ѭ=Ќ.OperationManager.get("ElseIfOperation")
+џ=Ќ.OperationManager.get("BodyOperation")
+p=(new Ѭ).constructor(Д,Ќ)
+Ѯ=(new џ).constructor(Д.statement,Ќ)
+p.condition=Ќ.visit(Д.condition)
+Ѯ.stack.push(Ќ.visit(Д.statement))
+p.body=Ѯ
+return p
+end function
+Ҙ.ElseShortcutClause=function(Ќ,Д)
+ѯ=Ќ.OperationManager.get("ElseOperation")
+џ=Ќ.OperationManager.get("BodyOperation")
+p=(new ѯ).constructor(Д,Ќ)
+Ѯ=(new џ).constructor(Д.statement,Ќ)
+Ѯ.stack.push(Ќ.visit(Д.statement))
+p.body=Ѯ
+return p
+end function
+Ҙ.NilLiteral=function(Ќ,Д)
+return null
+end function
+Ҙ.ForGenericStatement=function(Ќ,Д)
+Ѱ=Ќ.OperationManager.get("ForOperation")
+џ=Ќ.OperationManager.get("BodyOperation")
+p=(new Ѱ).constructor(Д,Ќ)
+Ѯ=(new џ).constructor(Д.body,Ќ)
+p.variable=Ќ.visit(Д.variable)
+p.iterator=Ќ.visit(Д.iterator)
+for Ҡ in Д.body
+Ѯ.stack.push(Ќ.visit(Ҡ))
+end for
+p.body=Ѯ
+return p
+end function
+Ҙ.IfStatement=function(Ќ,Д)
+Ѿ=Ќ.OperationManager.get("IfStatementOperation")
+p=(new Ѿ).constructor(Д,Ќ)
+for ҭ in Д.clauses
+p.clauses.push(Ќ.visit(ҭ))
+end for
+return p
+end function
+Ҙ.IfClause=function(Ќ,Д)
+҅=Ќ.OperationManager.get("IfOperation")
+џ=Ќ.OperationManager.get("BodyOperation")
+p=(new ҅).constructor(Д,Ќ)
+Ѯ=(new џ).constructor(Д.body,Ќ)
+p.condition=Ќ.visit(Д.condition)
+for Ҡ in Д.body
+Ѯ.stack.push(Ќ.visit(Ҡ))
+end for
+p.body=Ѯ
+return p
+end function
+Ҙ.ElseifClause=function(Ќ,Д)
+Ѭ=Ќ.OperationManager.get("ElseIfOperation")
+џ=Ќ.OperationManager.get("BodyOperation")
+p=(new Ѭ).constructor(Д,Ќ)
+Ѯ=(new џ).constructor(Д.body,Ќ)
+p.condition=Ќ.visit(Д.condition)
+for Ҡ in Д.body
+Ѯ.stack.push(Ќ.visit(Ҡ))
+end for
+p.body=Ѯ
+return p
+end function
+Ҙ.ElseClause=function(Ќ,Д)
+ѯ=Ќ.OperationManager.get("ElseOperation")
+џ=Ќ.OperationManager.get("BodyOperation")
+p=(new ѯ).constructor(Д,Ќ)
+Ѯ=(new џ).constructor(Д.body,Ќ)
+for Ҡ in Д.body
+Ѯ.stack.push(Ќ.visit(Ҡ))
+end for
+p.body=Ѯ
+return p
+end function
+Ҙ.NegationExpression=function(Ќ,Д)
+ҋ=Ќ.OperationManager.get("NotOperation")
+p=(new ҋ).constructor(Д,Ќ)
+p.arg=Ќ.visit(Д.argument)
+return p
+end function
+Ҙ.ContinueStatement=function(Ќ,Д)
+Ѩ=Ќ.OperationManager.get("ContinueOperation")
+return (new Ѩ).constructor(Д,Ќ)
+end function
+Ҙ.BreakStatement=function(Ќ,Д)
+Ѧ=Ќ.OperationManager.get("BreakOperation")
+return (new Ѧ).constructor(Д,Ќ)
+end function
+Ҙ.CallExpression=function(Ќ,Д)
+В=Ќ.ExpressionManager.get("CallExpression")
+return (new В).constructor(Д,Ќ)
+end function
+Ҙ.CallStatement=function(Ќ,Д)
+В=Ќ.ExpressionManager.get("CallExpression")
+return (new В).constructor(Д,Ќ)
+end function
+Ҙ.FeatureImportExpression=function(Ќ,Д)
+exit("Not supported")
+end function
+Ҙ.FeatureIncludeExpression=function(Ќ,Д)
+exit("Not supported")
+end function
+Ҙ.ImportCodeExpression=function(Ќ,Д)
+exit("Not supported")
+end function
+Ҙ.FeatureDebuggerExpression=function(Ќ,Д)
+Ѫ=Ќ.OperationManager.get("DebuggerOperation")
+return (new Ѫ).constructor(Д,Ќ)
+end function
+Ҙ.ListConstructorExpression=function(Ќ,Д)
+Я=Ќ.ExpressionManager.get("ListExpression")
+return (new Я).constructor(Д,Ќ)
+end function
+Ҙ.BooleanLiteral=function(Ќ,Д)
+return Д.value
+end function
+Ҙ.EmptyExpression=function(Ќ,Д)
+return 
+end function
+Ҙ.BinaryExpression=function(Ќ,Д)
+й=Ќ.ExpressionManager.get("LogicalAndBinaryExpression")
+return (new й).constructor(Д,Ќ)
+end function
+Ҙ.BinaryNegatedExpression=function(Ќ,Д)
+Љ=Ќ.ExpressionManager.get("BinaryNegatedExpression")
+return (new Љ).constructor(Д,Ќ)
+end function
+Ҙ.LogicalExpression=function(Ќ,Д)
+й=Ќ.ExpressionManager.get("LogicalAndBinaryExpression")
+return (new й).constructor(Д,Ќ)
+end function
+Ҙ.UnaryExpression=function(Ќ,Д)
+p=null
+Ҍ=Ќ.OperationManager.get("ReferenceOperation")
+҇=Ќ.OperationManager.get("NewOperation")
+if ("@"==Д.operator) then
+p=(new Ҍ).constructor(Д,Ќ)
+else if ("new"==Д.operator) then
+p=(new ҇).constructor(Д,Ќ)
+end if
+p.arg=Ќ.visit(Д.argument)
+return p
+end function
+Ҙ.Chunk=function(Ќ,Д)
+џ=Ќ.OperationManager.get("BodyOperation")
+p=(new џ).constructor(Д,Ќ)
+for Ҡ in Д.body
+p.stack.push(Ќ.visit(Ҡ))
+end for
+return p
+end function
+ӎ={}
+ӎ.defaultMapper=Ҙ
+ӎ.OperationManager=ԑ
+ӎ.ExpressionManager=e
+ӎ.constructor=function(debug,ϴ)
+N=self
+N.mapper=N.defaultMapper
+N.debug=@debug
+N.raise=@ϴ
+N.status={"errors":[]}
+return N
+end function
+ӎ.visit=function(Ӓ)
+N=self
+if (Ӓ==null) then
+return 
+end if
+if (Ӓ.type==null) then
+N.exception("Unexpected as type")
+return 
+end if
+if not N.mapper.hasIndex(Ӓ.type) then
+N.exception(("Type does not exist "+Ӓ.type))
+return 
+end if
+ӕ=@N.mapper[Ӓ.type]
+Л=ӕ(N,Ӓ)
+return Л
+end function
+ӎ.exception=function(Ӗ)
+N=self
+ӗ=("[CPSEvaluatorWalker] Error: "+Ӗ)
+debug(ӗ)
+N.status.errors.push(ӗ)
+return null
+end function
+ӎ.getErrors=function()
+return self.status.errors
+end function
+ә={}
+ә.TopOperation=ғ
+ә.CPSEvaluatorWalker=ӎ
+ә.constructor=function(Ӛ,debug,ϴ)
+N=self
+N.chunk=Ӛ
+N.debug=@debug
+N.raise=@ϴ
+if (@N.debug==null) then
+N.debug=@N.defaultDebug
+end if
+if (@N.raise==null) then
+N.raise=@N.defaultRaise
+end if
+return N
+end function
+ә.defaultDebug=function()
+return 
+end function
+ә.defaultRaise=function()
+return 
+end function
+ә.digest=function()
+N=self
+Ќ=(new N.CPSEvaluatorWalker).constructor(@N.debug,@N.raise)
+ӝ=(new N.TopOperation).constructor
+ӝ.body=Ќ.visit(N.chunk)
+return ӝ
+end function
+Ӟ={}
+Ӟ.dynResolve=л
+Ӟ.ScopeRegistry=s
+Ӟ.constructor=function(Ђ)
+N=self
+N.id=md5(str(time))
+N.classID="scope"
+N.isScope=true
+N.context=Ђ
+N.refs={}
+N.ScopeRegistry.add(N)
+return N
+end function
+Ӟ.valueOf=function()
+return self.refs
+end function
+Ӟ.createProxy=function()
+N=self
+return {"classID":"proxyScope","id":N.id}
+end function
+Ӟ.extend=function(р)
+N=self
+if (р==null) then
+р={}
+end if
+for љ in р
+N.refs[љ.key]=@љ.value
+end for
+return N
+end function
+Ӟ.set=function(Ϸ,б)
+N=self
+if (typeof(Ϸ)=="string") then
+Ϸ=Ϸ.split(".")
+end if
+ӡ=([]+Ϸ)
+X=N.refs
+Ӣ=ӡ.pop
+е=ӡ.pull
+Ц=X
+if (е!=null) then
+if (typeof(N.dynResolve.get(@Ц,е))!="null") then
+Ц=@Ц[е]
+ђ=typeof(@Ц)
+if ((ђ=="list") or (ђ=="map")) then
+return N.dynResolve.set(@Ц,(ӡ+[Ӣ]),@б)
+else if (ђ=="scope") then
+return Ц.set((ӡ+[Ӣ]),@б)
+end if
+else if (N.dynResolve.get(N,"context.previous") and not N.dynResolve.get(N,"context.previous.isProteced")) then
+return N.context.previous.set(Ϸ,@б)
+else if (ӡ.len>0) then
+exit(("Cannot set path "+Ϸ.join(".")))
+end if
+end if
+ђ=typeof(@Ц)
+if (((((@Ц!=null) and (ђ!="boolean")) and (ђ!="string")) and (ђ!="number")) and (ђ!="null")) then
+Ц[Ӣ]=@б
+else
+exit(("Cannot set path "+Ϸ.join(".")))
+end if
+end function
+Ӟ.get=function(Ϸ)
+N=self
+if (typeof(Ϸ)=="string") then
+Ϸ=Ϸ.split(".")
+end if
+ӡ=([]+Ϸ)
+X=N.refs
+е=ӡ.pull
+Ц=X
+if (е!=null) then
+if (typeof(N.dynResolve.get(@Ц,е))!="null") then
+Ц=@Ц[е]
+ђ=typeof(@Ц)
+if (ӡ.len>0) then
+if (ђ=="scope") then
+return Ц.get(ӡ)
+else if ((ђ!="number") or (ђ!="boolean")) then
+return N.dynResolve.get(@Ц,ӡ)
+end if
+end if
+else if N.dynResolve.get(N,"context.previous") then
+return N.context.previous.get(Ϸ)
+else
+Ц=null
+end if
+end if
+return @Ц
+end function
+Ӟ.getCallable=function(Ϸ)
+N=self
+if (typeof(Ϸ)=="string") then
+Ϸ=Ϸ.split(".")
+end if
+ӡ=([]+Ϸ)
+X=N.refs
+е=ӡ.pull
+Ц=X
+Ђ=null
+if (е!=null) then
+if (typeof(N.dynResolve.get(@Ц,е))!="null") then
+Ђ=@Ц
+Ц=@Ц[е]
+ђ=typeof(@Ц)
+if (ђ=="scope") then
+return Ц.getCallable(ӡ)
+else if ((ђ!="number") or (ђ!="boolean")) then
+return N.dynResolve.getCallable(@Ц,ӡ)
+end if
+else if N.dynResolve.get(N,"context.previous") then
+return N.context.previous.getCallable(Ϸ)
+else
+Ц=null
+end if
+end if
+return {"origin":@Ц,"context":Ђ}
+end function
+ө={}
+ө.TYPE={"API":"API","GLOBAL":"GLOBAL","FUNCTION":"FUNCTION","LOOP":"LOOP","MAP":"MAP","CALL":"CALL"}
+ө.STATE={"TEMPORARY":"TEMPORARY","DEFAULT":"DEFAULT"}
+ө.Base=ө
+ө.Scope=Ӟ
+ө.constructor=function(Ӱ=false)
+N=self
+N.classID="operationContext"
+N.previous=null
+N.type=N.TYPE.API
+N.state=N.STATE.DEFAULT
+N.scope=(new N.Scope).constructor(N)
+N.isProteced=Ӱ
+N.memory={}
+return N
+end function
+ө.valueOf=function()
+return self.scope.valueOf
+end function
+ө.createProxy=function()
+return self.scope.createProxy
+end function
+ө.extend=function(р)
+N=self
+if (N.state==N.STATE.TEMPORARY) then
+N.previous.extend(р)
+else
+N.scope.extend(р)
+end if
+return N
+end function
+ө.set=function(Ϸ,б)
+N=self
+if (N.state==N.STATE.TEMPORARY) then
+N.previous.set(Ϸ,б)
+else
+N.scope.set(Ϸ,б)
+end if
+return N
+end function
+ө.get=function(Ϸ)
+N=self
+if (N.state==N.STATE.TEMPORARY) then
+return N.previous.get(Ϸ)
+end if
+return N.scope.get(Ϸ)
+end function
+ө.setMemory=function(g,б)
+N=self
+N.memory[g]=б
+return N
+end function
+ө.getMemory=function(g)
+N=self
+if N.memory.hasIndex(g) then
+return N.memory[g]
+end if
+return null
+end function
+ө.getCallable=function(Ϸ)
+N=self
+if (N.state==N.STATE.TEMPORARY) then
+return N.previous.getCallable(Ϸ)
+end if
+return N.scope.getCallable(Ϸ)
+end function
+ө.fork=function(z,Ӳ)
+N=self
+ϲ=(new N.Base).constructor
+ϲ.previous=N
+ϲ.type=z
+ϲ.state=Ӳ
+if ((N.type==N.TYPE.FUNCTION) or (N.type==N.TYPE.GLOBAL)) then
+ϲ.extend({"locals":ϲ.createProxy})
+end if
+if (z!=N.TYPE.FUNCTION) then
+if (z!=N.TYPE.LOOP) then
+ϲ.setMemory("loopContext",N.getMemory("loopContext"))
+end if
+ϲ.setMemory("functionContext",N.getMemory("functionContext"))
+end if
+return ϲ
+end function
+J={}
+J.CodeParser=н
+J.EventEmitter=ԃ
+J.CPSEvaluator=ә
+J.OperationContext=ө
+J.constructor=function(M,O,params,ӹ)
+N=self
+N.code=M
+N.api=O
+N.params=params
+N.emitter=ӹ
+N.status={"errors":[]}
+if (N.emitter==null) then
+N.emitter=(new N.EventEmitter).constructor
+end if
+return N
+end function
+J.hasError=function()
+return (self.status.errors.len>0)
+end function
+J.getErrors=function()
+return self.status.errors
+end function
+J.raise=function(ӻ)
+debug(("[ERROR] "+ӻ))
+end function
+J.debug=function(ӻ)
+debug(("[DEBUG] "+ӻ))
+end function
+J.digest=function()
+N=self
+Ӽ=(new N.CodeParser).constructor(N.code)
+Ӛ=Ӽ.parseChunk
+if Ӽ.hasError then
+N.status.errors=(N.status.errors+Ӽ.getErrors)
+return null
+end if
+Ӿ=(new N.CPSEvaluator).constructor(Ӛ,@N.debug,@N.raise).digest
+ӿ=(new N.OperationContext).constructor(true)
+N.api.params=N.params
+ӿ.extend(N.api)
+return Ӿ.run(ӿ)
+end function
+return J
+end function
+injector.def("interpreter",["dynResolve","parser","eventEmitter","dynApply"],@Z)
+Ԁ=function()
+d={}
+ԁ={}
+ԁ[0]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref)
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec
+end function
+ԁ[1]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref,@Ԃ.args[0])
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec(@Ԃ.args[0])
+end function
+ԁ[2]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref,@Ԃ.args[0],@Ԃ.args[1])
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec(@Ԃ.args[0],@Ԃ.args[1])
+end function
+ԁ[3]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref,@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2])
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec(@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2])
+end function
+ԁ[4]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref,@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3])
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec(@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3])
+end function
+ԁ[5]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref,@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4])
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec(@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4])
+end function
+ԁ[6]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref,@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4],@Ԃ.args[5])
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec(@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4],@Ԃ.args[5])
+end function
+ԁ[7]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref,@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4],@Ԃ.args[5],@Ԃ.args[6])
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec(@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4],@Ԃ.args[5],@Ԃ.args[6])
+end function
+ԁ[8]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref,@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4],@Ԃ.args[5],@Ԃ.args[6],@Ԃ.args[7])
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec(@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4],@Ԃ.args[5],@Ԃ.args[6],@Ԃ.args[7])
+end function
+ԁ[9]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref,@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4],@Ԃ.args[5],@Ԃ.args[6],@Ԃ.args[7],@Ԃ.args[8])
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec(@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4],@Ԃ.args[5],@Ԃ.args[6],@Ԃ.args[7],@Ԃ.args[8])
+end function
+ԁ[10]=function(Ԃ)
+if (typeof(Ԃ.ctx)=="dynProxy") then
+ӕ=@Ԃ.fn
+return ӕ(Ԃ.ctx.__ref,@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4],@Ԃ.args[5],@Ԃ.args[6],@Ԃ.args[7],@Ԃ.args[8],@Ԃ.args[9])
+end if
+Ԃ.ctx.__dynApplyExec=@Ԃ.fn
+return Ԃ.ctx.__dynApplyExec(@Ԃ.args[0],@Ԃ.args[1],@Ԃ.args[2],@Ԃ.args[3],@Ԃ.args[4],@Ԃ.args[5],@Ԃ.args[6],@Ԃ.args[7],@Ԃ.args[8],@Ԃ.args[9])
+end function
+d.METHODS=ԁ
+d.apply=function(ӕ,Г,Ђ)
+N=self
+if (Г==null) then
+Г=[]
+end if
+if (Ђ==null) then
+Ђ=globals
+end if
+Ԏ=Г.len
+if N.METHODS.hasIndex(Ԏ) then
+Ԑ=@N.METHODS[Ԏ]
+return Ԑ({"classID":"apply","ctx":Ђ,"fn":@ӕ,"args":Г})
+end if
+exit("Error: dynApply only supports 10 arguments")
+end function
+return d
+end function
+injector.def("dynApply",@Ԁ)
+Ԓ=function()
+л={}
+л.hasIndex=@{}["hasIndex"]
+л.MODES={"STRICT":0,"WARN":1,"IGNORE":2}
+л.mode=л.MODES.IGNORE
+л.getMapIsa=function(Ћ)
+Ϲ={}
+ԗ={}
+ԗ.__ref=Ћ
+ԗ.classID="dynProxy"
+ԗ.hasIndex=@Ϲ["hasIndex"]
+ԗ.indexOf=@Ϲ["indexOf"]
+ԗ.push=@Ϲ["push"]
+ԗ.remove=@Ϲ["remove"]
+ԗ.indexes=@Ϲ["indexes"]
+ԗ.len=@Ϲ["len"]
+ԗ.pop=@Ϲ["pop"]
+ԗ.shuffle=@Ϲ["shuffle"]
+ԗ.sum=@Ϲ["sum"]
+ԗ.values=@Ϲ["values"]
+return ԗ
+end function
+л.getListIsa=function(Ћ)
+Ϲ=[]
+ԗ={}
+ԗ.__ref=Ћ
+ԗ.classID="dynProxy"
+ԗ.hasIndex=@Ϲ["hasIndex"]
+ԗ.indexOf=@Ϲ["indexOf"]
+ԗ.remove=@Ϲ["remove"]
+ԗ.join=@Ϲ["join"]
+ԗ.push=@Ϲ["push"]
+ԗ.pop=@Ϲ["pop"]
+ԗ.pull=@Ϲ["pull"]
+ԗ.shuffle=@Ϲ["shuffle"]
+ԗ.reverse=@Ϲ["reverse"]
+ԗ.sort=@Ϲ["sort"]
+ԗ.indexes=@Ϲ["indexes"]
+ԗ.len=@Ϲ["len"]
+ԗ.sum=@Ϲ["sum"]
+ԗ.values=@Ϲ["values"]
+return ԗ
+end function
+л.getStringIsa=function(Ћ)
+Ϲ=""
+ԗ={}
+ԗ.__ref=Ћ
+ԗ.classID="dynProxy"
+ԗ.remove=@Ϲ["remove"]
+ԗ.hasIndex=@Ϲ["hasIndex"]
+ԗ.indexOf=@Ϲ["indexOf"]
+ԗ.lastIndexOf=@Ϲ["lastIndexOf"]
+ԗ.split=@Ϲ["split"]
+ԗ.replace=@Ϲ["replace"]
+ԗ.trim=@Ϲ["trim"]
+ԗ.indexes=@Ϲ["indexes"]
+ԗ.code=@Ϲ["code"]
+ԗ.len=@Ϲ["len"]
+ԗ.lower=@Ϲ["lower"]
+ԗ.upper=@Ϲ["upper"]
+ԗ.val=@Ϲ["val"]
+ԗ.values=@Ϲ["values"]
+ԗ.to_int=@Ϲ["to_int"]
+return ԗ
+end function
+л.API_KEYS=["aptclientLib","computer","cryptoLib","file","libMail","MetaxploitLib","MetaLib","MetaMail","NetSession","port","router","shell","ftpshell"]
+л.getApiIsa=function(Ћ)
+Ϲ=""
+ԗ={}
+ԗ.__ref=Ћ
+ԗ.classID="dynProxy"
+for Д in Ћ.__isa
+ԗ[Д.key]=@Д.value
+end for
+return ԗ
+end function
+л.detach=function(Ћ)
+N=self
+hasIndex=@N.hasIndex
+if N.usesNativeIsa(@Ћ) then
+z=typeof(Ћ)
+if (z=="map") then
+return N.getMapIsa(Ћ)
+else if (z=="list") then
+return N.getListIsa(Ћ)
+else if (z=="string") then
+return N.getStringIsa(Ћ)
+else if (N.API_KEYS.indexOf(z)!=null) then
+return N.getApiIsa(Ћ)
+end if
+end if
+return @Ћ
+end function
+л.usesNativeIsa=function(Ћ)
+N=self
+z=typeof(@Ћ)
+return ((((z=="map") or (z=="list")) or (z=="string")) or (N.API_KEYS.indexOf(z)!=null))
+end function
+л.get=function(Ћ,Ϸ,Դ)
+if (typeof(Ϸ)=="string") then
+Ϸ=Ϸ.split(".")
+end if
+N=self
+Ц=@Ћ
+hasIndex=@N.hasIndex
+Ե=([]+Ϸ)
+while (@Ћ!=null)
+if (Ե.len==0) then break
+Զ=typeof(@Ћ)
+Է=Ե.pull
+if (((Զ=="list") or (Զ=="string")) and (typeof(Է)=="string")) then
+Է=Է.to_int
+if (typeof(Է)=="string") then
+Ћ=N.detach(Ћ)
+end if
+end if
+if hasIndex(@Ћ,Է) then
+Ћ=@Ћ[Է]
+else if (((typeof(@Ћ)!="string") and hasIndex(@Ћ,"__isa")) and hasIndex(Ћ.__isa,Է)) then
+Ћ=@Ћ.__isa[Է]
+else if N.usesNativeIsa(@Ћ) then
+Ը=N.detach(Ћ)
+if Ը.hasIndex(Է) then
+Ћ=@Ћ[Է]
+else
+Ћ=null
+end if
+else
+Ћ=null
+end if
+end while
+if (typeof(@Ћ)=="null") then
+if (typeof(@Դ)=="null") then
+N.raise(((("[WARNING] Cannot get value "+Ϸ.join(" "))+" from ")+@Ц))
+end if
+return @Դ
+end if
+return @Ћ
+end function
+л.set=function(Ћ,Ϸ,Թ)
+if (typeof(Ϸ)=="string") then
+Ϸ=Ϸ.split(".")
+end if
+N=self
+Ц=@Ћ
+hasIndex=@N.hasIndex
+Ե=([]+Ϸ)
+Ӣ=Ե.pop
+if (Ӣ==null) then
+return false
+end if
+Ћ=N.get(Ћ,Ե)
+Զ=typeof(@Ћ)
+if (((((typeof(Ћ)=="null") or (Զ=="string")) or (Զ=="boolean")) or (Զ=="number")) or (Զ=="function")) then
+N.raise(((("[WARNING] Cannot set value "+Ϸ.join(" "))+" on ")+@Ц))
+return false
+end if
+Ћ[Ӣ]=@Թ
+return true
+end function
+л.getCallable=function(Ћ,Ϸ)
+if (typeof(Ϸ)=="string") then
+Ϸ=Ϸ.split(".")
+end if
+N=self
+Ц=@Ћ
+Ђ=null
+hasIndex=@N.hasIndex
+Ե=([]+Ϸ)
+while (@Ћ!=null)
+if (Ե.len==0) then break
+Զ=typeof(@Ћ)
+Է=Ե.pull
+if (((Զ=="list") or (Զ=="string")) and (typeof(Է)=="string")) then
+Է=Է.to_int
+if (typeof(Է)=="string") then
+Ђ=Ћ
+Ћ=N.detach(Ћ)
+Զ=typeof(@Ћ)
+end if
+end if
+if (N.API_KEYS.indexOf(Զ)!=null) then
+Ђ=N.detach(Ћ)
+Ћ=@Ћ[Է]
+else if hasIndex(@Ћ,Է) then
+Ђ=@Ћ
+Ћ=@Ћ[Է]
+else if (((Զ!="string") and hasIndex(@Ћ,"__isa")) and hasIndex(Ћ.__isa,Է)) then
+Ђ=@Ћ
+Ћ=@Ћ.__isa[Է]
+else if N.usesNativeIsa(@Ћ) then
+Ђ=Ћ
+Ը=N.detach(Ћ)
+if Ը.hasIndex(Է) then
+Ћ=@Ћ[Է]
+else
+Ћ=null
+end if
+else
+Ћ=null
+end if
+end while
+if (typeof(@Ћ)=="null") then
+N.raise(((("[WARNING] Cannot get callable value "+Ϸ.join(" "))+" from ")+@Ц))
+end if
+return {"origin":@Ћ,"context":Ђ}
+end function
+л.raise=function(Լ)
+N=self
+if (N.mode==N.MODES.WARN) then
+print(Լ)
+else if (N.mode==N.MODES.STRICT) then
+exit(Լ)
+end if
+end function
+return л
+end function
+injector.def("dynResolve",@Ԓ)
+H=function(I)
+J=I[0]
+K={}
+K.Interpreter=J
+K.execute=function(M,params)
+N=self
+O={}
+O.print=@print
+O.wait=@wait
+O.time=@time
+O.typeof=@typeof
+O.md5=@md5
+O.get_router=@get_router
+O.get_shell=@get_shell
+O.nslookup=@nslookup
+O.whois=@whois
+O.is_valid_ip=@is_valid_ip
+O.is_lan_ip=@is_lan_ip
+O.command_info=@command_info
+O.current_date=@current_date
+O.current_path=@current_path
+O.parent_path=@parent_path
+O.home_dir=@home_dir
+O.program_path=@program_path
+O.active_user=@active_user
+O.user_mail_address=@user_mail_address
+O.user_bank_number=@user_bank_number
+O.format_columns=@format_columns
+O.user_input=@user_input
+O.include_lib=@include_lib
+O.bitwise=@bitwise
+O.clear_screen=@clear_screen
+O.slice=@slice
+O.str=@str
+O.hash=@hash
+O.abs=@abs
+O.acos=@acos
+O.asin=@asin
+O.atan=@atan
+O.tan=@tan
+O.cos=@cos
+O.sin=@sin
+O.char=@char
+O.floor=@floor
+O.range=@range
+O.round=@round
+O.rnd=@rnd
+O.sign=@sign
+O.sqrt=@sqrt
+O.str=@str
+O.ceil=@ceil
+O.pi=@pi
+O.include_lib=@include_lib
+P=time
+print((("Executing "+char(10))+M))
+Q=(new N.Interpreter).constructor(M,O,params)
+R=Q.digest
+if Q.hasError then
+print(Q.getErrors.join(char(10)))
+end if
+print(("Executed in "+(time-P)))
+print("Global Context: ")
+print(R.scope.refs)
+end function
+return K
+end function
+injector.def("teditInterpreter",["interpreter"],@H)
