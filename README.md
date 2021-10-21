@@ -10,12 +10,21 @@ Plugins:
 	- Syntax highlighting
 	- Custom syntax check
 	- Custom interpreter
+	- Interpreter comes with debug feature, also support "import_code" now
 
 Other plugins comming soon.
+
+# Planned features
+
+- support keypress inputs for display mode
 
 # Demo
 
 [![TEdit Demo](/assets/demo.gif?raw=true)](https://www.youtube.com/watch?v=waPEtJLboRw)
+
+# Debugging
+
+[![TEdit Debugger Demo](/assets/demo-debugger.gif?raw=true)](https://www.youtube.com/watch?v=1187OzHwpMM)
 
 # Install
 

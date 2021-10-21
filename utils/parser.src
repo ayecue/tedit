@@ -103,6 +103,12 @@ parserModule = function(deps)
 	AST.negationExpression = function(arg, line)
 		return {"type": "NegationExpression","argument": arg,"line": line};
 	end function
+	AST.featureDebuggerExpression = function(line)
+		return {"type": "FeatureDebuggerExpression","line": line}
+	end function
+	AST.importCodeExpression = function(filepath, line)
+		return {"type": "ImportCodeExpression","filepath": filepath,"line": line}
+	end function
 
 	Parser = {}
 	Parser.Lexer = Lexer
@@ -548,6 +554,26 @@ parserModule = function(deps)
 		return expression
 	end function
 
+	Parser.parseNativeImportCodeStatement = function()
+		me = self
+		mainStatementLine = me.token.line
+		filepath = null
+
+		me.expect("(")
+
+		if ("str" == me.token.type) then
+			filepath = me.parsePrimaryExpression()
+		else
+			me.exception("Unexpected non literal value in import_code")
+			return null
+		end if
+
+		me.expect(")")
+		me.expect(";")
+
+		return me.AST.importCodeExpression(filepath, mainStatementLine)
+	end function
+
 	Parser.parseWhileStatement = function(flowContext)
 		debug("parser.parseWhileStatement")
 		me = self
@@ -762,12 +788,11 @@ parserModule = function(deps)
 			while (true)
 				if ("idtf" == me.token.type) then
 					parameter = me.parseIdentifier()
-					value = parameter.value
+					defaultValue = null
 					if (me.consume("=")) then
-						value = me.parseExpectedExpression(flowContext)
-						parameter = me.AST.assignmentStatement(parameter, value, mainStatementLine)
+						defaultValue = me.parseExpectedExpression(flowContext)
 					end if
-					parameters.push(parameter)
+					parameters.push({"path":parameter, "defaultValue": defaultValue})
 					if (me.consume(",")) then
 						continue
 					end if
@@ -824,6 +849,16 @@ parserModule = function(deps)
 			else if ("break" == value) then
 				me.next()
 				return me.AST.breakStatement()
+			else if ("break" == value) then
+				me.next()
+				return me.AST.breakStatement()
+			else if ("debugger" == value) then
+				base = me.AST.featureDebuggerExpression(me.token.line)
+				me.next()
+				return base
+			else if ("import_" + "code" == value) then
+				me.next()
+				return me.parseNativeImportCodeStatement()
 			end if
 		else if ("eol" == me.token.type or "cmt" == me.token.type or "nol" == me.token.type) then
 			me.next()

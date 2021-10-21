@@ -2,7 +2,7 @@ lexerModule = function()
 	Lexer = {}
 
 	Lexer.fallthrough = [45, 43, 42, 47, 46, 94, 37, 44, 123, 125, 91, 93, 40, 41, 64]
-	Lexer.keywords = ["if", "in", "or", "and", "end", "for", "not", "new", "else", "then", "break", "while", "return", "function", "continue"]
+	Lexer.keywords = ["if", "in", "or", "and", "end", "for", "not", "new", "else", "then", "break", "while", "return", "function", "continue","debugger","import_" + "code"]
 	Lexer.constructor = function(content)
 		me = self
 
