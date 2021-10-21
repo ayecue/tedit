@@ -69,12 +69,18 @@ styledTextModule = function()
 
 			if (str.code == 60 and not isInString) then
 				nextStr = text[currentOffset + 1]
-
 				tag = ""
 
 				while (currentOffset < max)
 					currentOffset = currentOffset + 1
 					str = text[currentOffset]
+
+					if (str.code == 60) then
+						//dirty fix to prevent logical operator to be mistaken as style
+						//needs clean up
+						newText = newText + tag[1:] + str
+						break
+					end if
 
 					if (str.code != 62) then
 						tag = tag + str
@@ -92,10 +98,17 @@ styledTextModule = function()
 					if (tagType == lastTag.type) then
 						lastTag.boundaries[1] = trueOffset
 					else
-						return null
+						newText = newText + tag
+						continue
 					end if
 				else
 					segments = tag.split("=")
+
+					if (segments.len != 2) then
+						newText = newText + tag
+						continue
+					end if
+
 					tagType = segments[0]
 					tagValue = segments[1]
 

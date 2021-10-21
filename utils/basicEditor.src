@@ -39,6 +39,9 @@ basicEditorModule = function(deps)
 		me.lastSearchResults = []
 		me.selectedSearchResult = null
 		me.saved = true
+		me.lineNumberDelimiterChar = char(124)
+		//nightly seems really buggy, because of that this char is used for now
+		me.cursorChar = "$"
 
 		config.setDefault({
 			"line-position-color": "yellow",
@@ -101,6 +104,12 @@ basicEditorModule = function(deps)
 			"tx": "findNextResult",
 			"Fx": "findAndJumpPrevious",
 			"Tx": "findPreviousResult"
+		}
+	end function
+
+	BasicEditor.getInteractCmds = function()
+		return {
+			":t": "indent"
 		}
 	end function
 
@@ -654,14 +663,17 @@ basicEditorModule = function(deps)
 	BasicEditor.insertInteract = function()
 		me = self
 		mainCmds = me.getMainCmds()
+		insertCmds = me.getInteractCmds()
 
-		response = me.enrichedUserInput.prompt("")
+		response = me.enrichedUserInput.prompt("<mark=" + me.config.get("cursor-position-color") + ">" + me.cursorChar + "</mark>")
 
 		if (response.raw.indexOf(":") == 0) then
 			vimCmd = me.parseCmdInput(response.raw)
 
 			if (vimCmd == null) then
 				me.exception("invalid command")
+			else if (insertCmds.hasIndex(vimCmd.cmd)) then
+				me.insertInteractCommandEval(insertCmds[vimCmd.cmd], vimCmd.values)
 			else if (mainCmds.hasIndex(vimCmd.cmd)) then
 				me.mainInteractEval(mainCmds[vimCmd.cmd], vimCmd.values)
 			else
@@ -673,6 +685,16 @@ basicEditorModule = function(deps)
 
 		me.render()
 		me.state.set("interact")
+	end function
+
+	BasicEditor.insertInteractCommandEval = function(command, values)
+		me = self
+
+		if (command == "indent") then
+			me.insertInteractEval(char(9))
+		else
+			me.exception("<color=red>Command is not yet implemented</color>")
+		end if
 	end function
 
 	BasicEditor.insertInteractEval = function(value)
@@ -777,7 +799,7 @@ basicEditorModule = function(deps)
 				me.appendInsertLines()
 			end if
 
-			me.setPosition(cursorLine + me.insertLines.len, cursorOffset)
+			me.setPosition(cursorLine, cursorOffset)
 
 			me.saved = false
 		end if
@@ -1031,7 +1053,8 @@ basicEditorModule = function(deps)
 			output = me.prepareLineNumber(index, numberWidth)
 			output = output + me.prepareVisualLine(insertLine, index, false)
 
-			print(output)
+			//user_input now creates a new line on usage therefore this is in place to give a better indication
+			print(output + "<mark=" + me.config.get("cursor-position-color") + ">" + me.cursorChar + "</mark>")
 
 			index = index + 1
 		end for
@@ -1067,7 +1090,7 @@ basicEditorModule = function(deps)
 			if (leftIndex != rightIndex) then
 				output = leftStr + "<mark=" + me.config.get("cursor-position-color") + ">" + current + "</mark>" + rightStr
 			else
-				output = leftStr + "<mark=" + me.config.get("cursor-position-color") + ">" + char(124) + "</mark>" + rightStr
+				output = leftStr + "<mark=" + me.config.get("cursor-position-color") + ">" + me.cursorChar + "</mark>" + rightStr
 			end if
 		end if
 
@@ -1090,7 +1113,7 @@ basicEditorModule = function(deps)
 		end if
 
 		//166
-		output = output + lineNumber + " " + char(124) + " " + char(9)
+		output = output + lineNumber + " " + me.lineNumberDelimiterChar + " " + char(9)
 
 		if ((highlighting != null and highlighting) or (highlighting == null and index == state.getItem("cursor-line"))) then
 			output = "<color=" + me.config.get("line-position-color") + ">" + output + "</color>"

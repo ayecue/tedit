@@ -32,20 +32,6 @@ highlighterModule = function(deps)
 		debug("transformations.kwd")
 		value = item.value
 
-		if (value.indexOf("if") == 0 or value.indexOf("function") == 0 or value.indexOf("for") == 0 or value.indexOf("while") == 0) then
-			transformer.increaseIndent()
-		else if (value.indexOf("then") == 0) then
-			if (transformer.next != null) then
-				nextValue = transformer.next.value
-
-				if (nextValue.indexOf("<eof>") != 0 and nextValue.indexOf(";") != 0) then
-					transformer.decreaseIndent()
-				end if
-			end if
-		else if (value.indexOf("end") == 0) then
-			transformer.decreaseIndent()
-		end if
-
 		return transformer.color("keyword", item.value)
 	end function
 
@@ -98,16 +84,7 @@ highlighterModule = function(deps)
 
 	VisualTransformations.nol = function(transformer, item, stack)
 		debug("transformations.nol")
-
-		if (transformer.next != null) then
-			nextValue = transformer.next.value
-
-			if (nextValue.indexOf("end") == 0 or nextValue.indexOf("else") == 0) then
-				return transformer.indent(-1)
-			end if
-		end if
-
-		return transformer.indent()
+		return ""
 	end function
 
 	CodeTransformations = {}

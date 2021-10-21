@@ -144,10 +144,7 @@ lexerModule = function()
 			code = me.codeAt()
 
 			if (code == 32 or code == 9) then
-				if (code == 32) then
-					content = content + me.content[me.index]
-				end if
-
+				content = content + me.content[me.index]
 				me.nextIndex()
 			else
 				break

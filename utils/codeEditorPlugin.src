@@ -187,12 +187,11 @@ codeEditorPluginModule = function(deps)
 				offset = state.getItem("cursor-offset")
 			end if
 
-			indent = me.getIndent(line)
-			leftCursorIndex = offset[0] - indent
-			rightCursorIndex = offset[1] - indent
+			leftCursorIndex = offset[0]
+			rightCursorIndex = offset[1]
 
 			if (leftCursorIndex == rightCursorIndex) then
-				styledText.insertText(char(124), leftCursorIndex)
+				styledText.insertText(me.cursorChar, leftCursorIndex)
 				styledText.addTag("mark", me.config.get("cursor-position-color"), [leftCursorIndex, leftCursorIndex + 1])
 			else
 				styledText.addTag("mark", me.config.get("cursor-position-color"), [leftCursorIndex, rightCursorIndex])
