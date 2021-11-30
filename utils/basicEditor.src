@@ -42,6 +42,7 @@ basicEditorModule = function(deps)
 		me.lineNumberDelimiterChar = char(124)
 		//nightly seems really buggy, because of that this char is used for now
 		me.cursorChar = "$"
+		me.lastInsertOutput = ""
 
 		config.setDefault({
 			"line-position-color": "yellow",
@@ -665,7 +666,7 @@ basicEditorModule = function(deps)
 		mainCmds = me.getMainCmds()
 		insertCmds = me.getInteractCmds()
 
-		response = me.enrichedUserInput.prompt("<mark=" + me.config.get("cursor-position-color") + ">" + me.cursorChar + "</mark>")
+		response = me.enrichedUserInput.prompt(me.lastInsertOutput)
 
 		if (response.raw.indexOf(":") == 0) then
 			vimCmd = me.parseCmdInput(response.raw)
@@ -1036,28 +1037,35 @@ basicEditorModule = function(deps)
 
 		numberWidth = str(endLine + 1 + insertLinesLength).len
 		index = startLine
+		newOutput = ""
 
 		while (index < endLine)
 			debug("render insert lines")
 
 			line = me.lines[index]
-			output = me.prepareLineNumber(index, numberWidth)
+			output = me.prepareLineNumber(index, numberWidth, false)
 			output = output + me.prepareVisualLine(line, index)
 
-			print(output)
+			newOutput = newOutput + output + char(10)
 
 			index = index + 1
 		end while
 
 		for insertLine in me.insertLines
-			output = me.prepareLineNumber(index, numberWidth)
+			output = me.prepareLineNumber(index, numberWidth, false)
 			output = output + me.prepareVisualLine(insertLine, index, false)
 
 			//user_input now creates a new line on usage therefore this is in place to give a better indication
-			print(output + "<mark=" + me.config.get("cursor-position-color") + ">" + me.cursorChar + "</mark>")
+			newOutput = newOutput + output
+
+			if ((insertLinesLength - 1) > index) then
+				newOutput = newOutput + char(10)
+			end if
 
 			index = index + 1
 		end for
+
+		me.lastInsertOutput = newOutput
 
 		return null
 	end function
