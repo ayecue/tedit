@@ -1,9 +1,6 @@
 globals.debug = function(str)
-	if (false) then
-		print(str)
-		return true
-	end if
-	return false
+	if (false) then print(str)
+	return null
 end function
 
 injectorModule = function()
@@ -65,7 +62,7 @@ injectorModule = function()
 			return @definition
 		end if
 		
-		args = []
+		depMap = {}
 		
 		for depNamespace in definition.deps
 			depDef = @me.get(depNamespace)
@@ -74,14 +71,14 @@ injectorModule = function()
 				print("[WARNING] Definition " + depNamespace + " is not initialized.")
 			end if
 			
-			args.push(@depDef)
+			depMap[depNamespace] = @depDef
 		end for
 		
 		completed = null
-		if (args.len == 0) then
+		if (depMap.values.len == 0) then
 			completed = definition.def()
 		else
-			completed = definition.def(args)
+			completed = definition.def(depMap)
 		end if
 		me.set(definition.name, @completed, true)
 		print("Injected <b>" + definition.name + "</b> ...")

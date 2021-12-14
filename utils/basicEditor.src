@@ -1,7 +1,7 @@
 basicEditorModule = function(deps)
-	State = deps[0]
-	enrichedUserInput = deps[1]
-	VimLexer = deps[2]
+	State = deps.state
+	enrichedUserInput = deps.enrichedUserInput
+	VimLexer = deps.vimLexer
 
 	BasicEditor = {}
 

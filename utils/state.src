@@ -1,5 +1,5 @@
 stateModule = function(deps)
-	EventEmitter = deps[0]
+	EventEmitter = deps.eventEmitter
 	State = {}
 
 	State.EventEmitter = EventEmitter

@@ -1,5 +1,5 @@
 enrichedUserInputModule = function(deps)
-	State = deps[0]
+	State = deps.state
 
 	UserInput = {}
 

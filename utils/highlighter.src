@@ -1,6 +1,6 @@
 highlighterModule = function(deps)
-	Lexer = deps[0]
-	Parser = deps[1]
+	Lexer = deps.lexer
+	Parser = deps.parser
 
 	VisualTransformations = {}
 

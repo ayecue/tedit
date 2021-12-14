@@ -1,9 +1,9 @@
 codeEditorPluginModule = function(deps)
-	inherits = @deps[0]
-	BasicEditor = deps[1]
-	Highlighter = deps[2]
-	StyledText = deps[3]
-	Interpreter = deps[4]
+	inherits = @deps.inherits
+	BasicEditor = deps.basicEditor
+	Highlighter = deps.highlighter
+	StyledText = deps.styledText
+	Interpreter = deps.teditInterpreter
 
 	CodeEditorPlugin = {}
 
