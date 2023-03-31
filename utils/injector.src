@@ -39,7 +39,7 @@ injectorModule = function()
 			return "[Error] " + namespace + " not found.."
 		end if
 		
-		return @me.loadDef(me.scope[namespace])
+		return @me.loadDef(@me.scope[namespace])
 	end function
 
 	DependencyInjector.def = function(namespace, dependencies, definition)

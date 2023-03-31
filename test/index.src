@@ -1,0 +1,18 @@
+get_shell("root", "test").host_computer.touch("/home/test", "somefile.src");
+f = get_shell("root", "test").host_computer.File("/home/test/somefile.src")
+
+f.chmod("u+wrx")
+f.chmod("o+wrx")
+f.chmod("g+wrx")
+f.set_content("
+test = function()
+	myTest = ""hello world""
+	print(myTest)
+end function
+
+test
+");
+
+params = ["/home/test/somefile.src"]
+
+import_code("/":"../tedit.src")

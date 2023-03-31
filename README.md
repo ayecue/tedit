@@ -12,12 +12,6 @@ Plugins:
 	- Custom interpreter
 	- Interpreter comes with debug feature, also support "import_code" now
 
-Other plugins comming soon.
-
-# Planned features
-
-- support keypress inputs for display mode
-
 # Demo
 
 [![TEdit Demo](/assets/demo.gif?raw=true)](https://www.youtube.com/watch?v=waPEtJLboRw)
@@ -30,7 +24,11 @@ Other plugins comming soon.
 
 Uses [greybel-js](https://github.com/ayecue/greybel-js) for transpiling.
 
-1. Nightly: `greybel tedit.src build --installer` or Non nightly: `greybel tedit-non-nightly.src build --uglify`
+1. Run: `greybel tedit.src build --installer`
 2. Copy installer files into GreyHack
 3. Compile installer files to ingame binary (this will automatically create all the files)
 4. Compile tedit.src to ingame binary
+
+# Test
+
+Run: `greybel-execute test/index.src`

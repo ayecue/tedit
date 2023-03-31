@@ -55,7 +55,6 @@ lexerModule = function()
 		beginLineStart = me.lineStart
 		stringStart = me.index + 1
 		string = ""
-		code
 
 		while (true)
 			me.nextIndex()
