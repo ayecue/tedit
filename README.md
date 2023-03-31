@@ -24,7 +24,7 @@ Plugins:
 
 Uses [greybel-js](https://github.com/ayecue/greybel-js) for transpiling.
 
-1. Run: `greybel tedit.src build --installer`
+1. Run: `greybel tedit.src . --installer`
 2. Copy installer files into GreyHack
 3. Compile installer files to ingame binary (this will automatically create all the files)
 4. Compile tedit.src to ingame binary
