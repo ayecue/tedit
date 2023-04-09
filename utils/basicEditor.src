@@ -424,7 +424,7 @@ basicEditorModule = function(deps)
 					"lineNumber": index,
 					"offset": [matchIndex, matchIndex + strLength]
 				})
-				matchIndex = line.indexOf(stringToSearch.raw, matchIndex)
+				matchIndex = line.indexOf(stringToSearch.raw, matchIndex + 1)
 			end while
 
 			index = index + 1
