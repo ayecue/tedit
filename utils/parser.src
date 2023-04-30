@@ -814,7 +814,7 @@ parserModule = function(deps)
 			me.expectMany(["end function", ";", "<eof>"])
 		end if
 
-		return me.AST.functionStatement(name, parameters, body, mainStatementLine)
+		return me.AST.functionStatement("anon", parameters, body, mainStatementLine)
 	end function
 
 	Parser.parseStatement = function(flowContext, isShortcutStatement)

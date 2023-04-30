@@ -704,7 +704,7 @@ basicEditorModule = function(deps)
 		cursorOffset = me.state.getItem("cursor-offset")
 		lastItemIndex = me.insertLines.len - 1
 		
-		index = value.indexOf(char(92) +"n")
+		index = value.indexOf(char(10))
 		lastIndex = 0
 
 		if (index == null) then
@@ -724,7 +724,7 @@ basicEditorModule = function(deps)
 			end if
 
 			lastIndex = index + 2
-			index = value.indexOf(char(92) +"n", index)
+			index = value.indexOf(char(10), index)
 			indexOffset = indexOffset + 1
 		end while
 

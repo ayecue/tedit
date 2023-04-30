@@ -75,12 +75,12 @@ codeEditorPluginModule = function(deps)
 			wait(1)
 			result = me.shell.launch(binPath, me.enrichedUserInput.prompt("Params:").raw)
 
-			if (result == null) then
+			if (result == true) then
 				print("Execution done...")
 				return true
 			end if
 
-			print("[Execution Error]: Couldn't launch binary.")
+			print("[Execution Error]: Couldn't launch binary. Due to " + result)
 		end if
 
 		return false
@@ -165,7 +165,7 @@ codeEditorPluginModule = function(deps)
 
 	CodeEditorPlugin.insertInteractEval = function(value)
 		me = self
-		value = value.replace(";", char(92) +"n")
+		value = value.replace(";", char(10))
 		return me.super_insertInteractEval(value)
 	end function
 
