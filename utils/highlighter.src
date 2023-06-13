@@ -1,735 +1,729 @@
-highlighterModule = function(deps)
-	Lexer = deps.lexer
-	Parser = deps.parser
+import_code("./lexer.src")
+import_code("./parser.src")
 
-	VisualTransformations = {}
+VisualTransformations = {}
 
-	VisualTransformations.str = function(transformer, item, stack)
-		debug("transformations.str")
+VisualTransformations.str = function(transformer, item, stack)
+	debug("transformations.str")
 
-		return transformer.color("string", char(34) + item.value + char(34))
-	end function
-
-	VisualTransformations.num = function(transformer, item, stack)
-		debug("transformations.num")
-
-		return transformer.color("number", item.value)
-	end function
-
-	VisualTransformations.punc = function(transformer, item, stack)
-		debug("transformations.punc")
-
-		return item.value
-	end function
-
-	VisualTransformations.slice = function(transformer, item, stack)
-		debug("transformations.slice")
-
-		return item.value
-	end function
-
-	VisualTransformations.kwd = function(transformer, item, stack)
-		debug("transformations.kwd")
-		value = item.value
-
-		return transformer.color("keyword", item.value)
-	end function
-
-	VisualTransformations.nil = function(transformer, item, stack)
-		debug("transformations.nil")
-
-		return "null"
-	end function
-
-	VisualTransformations.bool = function(transformer, item, stack)
-		debug("transformations.bool")
-		displayValue = "false"
-
-		if (item.value) then
-			displayValue = "true"
-		end if
-
-		return transformer.color("boolean", displayValue)
-	end function
-
-	VisualTransformations.idtf = function(transformer, item, stack)
-		debug("transformations.idtf")
-
-		if (transformer.isNativeFunction(item.value)) then
-			return transformer.color("native-function", item.value)
-		end if
-
-		return transformer.color("identifier", item.value)
-	end function
-
-	VisualTransformations.eof = function(transformer, item, stack)
-		debug("transformations.eof")
-		return ""
-	end function
-
-	VisualTransformations.whtspc = function(transformer, item, stack)
-		debug("transformations.whtspc")
-		return item.value
-	end function
-
-	VisualTransformations.cmt = function(transformer, item, stack)
-		debug("transformations.cmt")
-		return transformer.color("comment", item.value)
-	end function
-
-	VisualTransformations.eol = function(transformer, item, stack)
-		debug("transformations.eol")
-		return ""
-	end function
-
-	VisualTransformations.nol = function(transformer, item, stack)
-		debug("transformations.nol")
-		return ""
-	end function
-
-	CodeTransformations = {}
-
-	CodeTransformations.AssignmentStatement = function(transformer, item, stack)
-		debug("transformations.AssignmentStatement")
-		left = transformer.make(item.variable)
-		right = transformer.make(item.init)
-
-		return left + " = " + right
-	end function
-
-	CodeTransformations.MemberExpression = function(transformer, item, stack)
-		debug("transformations.MemberExpression")
-		identifier = transformer.make(item.identifier)
-		base = transformer.make(item.base)
-
-		return [base, identifier].join(item.indexer)
-	end function
-
-	CodeTransformations.FunctionDeclaration = function(transformer, item, stack)
-		debug("transformations.FunctionDeclaration")
-		currentIndent = transformer.indent()
-		transformer.increaseIndent()
-		name = " "
-		parameters = []
-		body = []
-
-		for parameterItem in item.parameters
-			parameters.push(transformer.make(parameterItem))
-		end for
-
-		for bodyItem in item.body
-			transformed = transformer.make(bodyItem)
-
-			if ("" == transformed) then
-				continue
-			end if
-
-			body.push(transformer.indent() + transformed)
-		end for
-
-		output = []
-		output.push(currentIndent + transformer.color("keyword", "function") + " (" + parameters.join(",") + ")")
-		output.push(body.join(char(10)))
-		output.push(currentIndent + transformer.color("keyword", "end function"))
-
-		transformer.decreaseIndent()
-
-		return output.join(char(10))
-	end function
-
-	CodeTransformations.MapConstructorExpression = function(transformer, item, stack)
-		debug("transformations.MapConstructorExpression")
-		fields = []
-
-		for fieldItem in item.fields
-			fields.push(transformer.make(fieldItem))
-		end for
-
-		return "{" + fields.join(", ") + "}"
-	end function
-
-	CodeTransformations.MapKeyString = function(transformer, item, stack)
-		debug("transformations.MapKeyString")
-		key = transformer.make(item.key)
-		value = transformer.make(item.value)
-
-		return [key, value].join(": ")
-	end function
-
-	CodeTransformations.Identifier = function(transformer, item, stack)
-		return item.value
-	end function
-
-	CodeTransformations.ReturnStatement = function(transformer, item, stack)
-		debug("transformations.ReturnStatement")
-		args = []
-
-		for argItem in item.arguments
-			args.push(transformer.make(argItem))
-		end for
-
-		return transformer.color("keyword", "return") + " " + args.join(",")
-	end function
-
-	CodeTransformations.NumericLiteral = function(transformer, item, stack)
-		return transformer.color("number", item.value)
-	end function
-
-	CodeTransformations.WhileStatement = function(transformer, item, stack)
-		debug("transformations.WhileStatement")
-		currentIndent = transformer.indent()
-		transformer.increaseIndent()
-		condition = transformer.make(item.condition)
-		body = []
-
-		for bodyItem in item.body
-			transformed = transformer.make(bodyItem)
-
-			if ("" == transformed) then
-				continue
-			end if
-
-			body.push(transformer.indent() + transformed)
-		end for
-
-		output = []
-		output.push(currentIndent + transformer.color("keyword", "while") + " " + condition)
-		output.push(body.join(char(10)))
-		output.push(currentIndent + transformer.color("keyword", "end while"))
-
-		transformer.decreaseIndent()
-
-		return output.join(char(10))
-	end function
-
-	CodeTransformations.CallExpression = function(transformer, item, stack)
-		debug("transformations.CallExpression")
-		base = transformer.make(item.base)
-		args = []
-
-		for argItem in item.arguments
-			args.push(transformer.make(argItem))
-		end for
-
-		return base + "(" + args.join(", ") + ")"
-	end function
-
-	CodeTransformations.StringLiteral = function(transformer, item, stack)
-		debug("transformations.StringLiteral")
-		return transformer.color("string", item.raw)
-	end function
-
-	CodeTransformations.SliceExpression = function(transformer, item, stack)
-		debug("transformations.SliceExpression")
-		left = transformer.make(item.left)
-		right = transformer.make(item.right)
-
-		return [left, right].join(": ")
-	end function
-
-	CodeTransformations.IndexExpression = function(transformer, item, stack)
-		debug("transformations.IndexExpression")
-		base = transformer.make(item.base)
-		index = transformer.make(item.index)
-
-		return base + "[" + index + "]"
-	end function
-
-	CodeTransformations.UnaryExpression = function(transformer, item, stack)
-		debug("transformations.UnaryExpression")
-		arg = transformer.make(item.argument)
-
-		if ("new" == item.operator) then
-			return "(" + transformer.color("keyword", item.operator) + " " + arg + ")"
-		end if
-
-		return item.operator + arg
-	end function
-
-	CodeTransformations.NegationExpression = function(transformer, item, stack)
-		debug("transformations.NegationExpression")
-		arg = transformer.make(item.argument)
-
-		return transformer.color("keyword", "not") + " " + arg
-	end function
-
-	CodeTransformations.IfShortcutStatement = function(transformer, item, stack)
-		debug("transformations.IfShortcutStatement")
-		clauses = []
-
-		for clausesItem in item.clauses
-			clauses.push(transformer.make(clausesItem))
-		end for
-
-		return clauses.join(" ")
-	end function
-
-	CodeTransformations.IfShortcutClause = function(transformer, item, stack)
-		debug("transformations.IfShortcutClause")
-		condition = transformer.make(item.condition)
-		statement = transformer.make(item.statement)
-
-		return transformer.color("keyword", "if") + " " + condition + " " + transformer.color("keyword", "then") + " " + statement
-	end function
-
-	CodeTransformations.ElseifShortcutClause = function(transformer, item, stack)
-		debug("transformations.ElseifShortcutClause")
-		condition = transformer.make(item.condition)
-		statement = transformer.make(item.statement)
-
-		return " " + transformer.color("keyword", "else if") + " " + condition + " " + transformer.color("keyword", "then") + " " + statement
-	end function
-
-	CodeTransformations.ElseShortcutClause = function(transformer, item, stack)
-		debug("transformations.ElseShortcutClause")
-		statement = transformer.make(item.statement)
-
-		return " " + transformer.color("keyword", "else") + " " + statement
-	end function
-
-	CodeTransformations.NilLiteral = function(transformer, item, stack)
-		debug("transformations.NilLiteral")
-		return item.raw
-	end function
-
-	CodeTransformations.ForGenericStatement = function(transformer, item, stack)
-		debug("transformations.ForGenericStatement")
-		currentIndent = transformer.indent()
-		transformer.increaseIndent()
-		variable = transformer.make(item.variable)
-		iterator = transformer.make(item.iterator)
-		body = []
-
-		for bodyItem in item.body
-			transformed = transformer.make(bodyItem)
-
-			if ("" == transformed) then
-				continue
-			end if
-
-			body.push(transformer.indent() + transformed)
-		end for
-
-		output = []
-		output.push(currentIndent + transformer.color("keyword", "for") + " " + variable + " " + transformer.color("keyword", "in") + " " + iterator)
-		output.push(body.join(char(10)))
-		output.push(currentIndent + transformer.color("keyword", "end for"))
-
-		transformer.decreaseIndent()
-
-		return output.join(char(10))
-	end function
-
-	CodeTransformations.IfStatement = function(transformer, item, stack)
-		debug("transformations.IfStatement")
-		currentIndent = transformer.indent()
-		clauses = []
-
-		for clausesItem in item.clauses
-			clauses.push(transformer.make(clausesItem))
-		end for
-
-		output = []
-		output.push(clauses.join(char(10)))
-		output.push(currentIndent + transformer.color("keyword", "end if"))
-
-		return output.join(char(10))
-	end function
-
-	CodeTransformations.IfClause = function(transformer, item, stack)
-		debug("transformations.IfClause")
-		transformer.increaseIndent()
-		condition = transformer.make(item.condition)
-		body = []
-
-		for bodyItem in item.body
-			transformed = transformer.make(bodyItem)
-
-			if ("" == transformed) then
-				continue
-			end if
-
-			body.push(transformer.indent() + transformed)
-		end for
-
-		output = []
-		output.push(transformer.color("keyword", "if") + " " + condition + " " + transformer.color("keyword", "then"))
-		output.push(body.join(char(10)))
-
-		transformer.decreaseIndent()
-
-		return output.join(char(10))
-	end function
-
-	CodeTransformations.ElseifClause = function(transformer, item, stack)
-		debug("transformations.ElseifClause")
-		currentIndent = transformer.indent()
-		transformer.increaseIndent()
-		condition = transformer.make(item.condition)
-		body = []
-
-		for bodyItem in item.body
-			transformed = transformer.make(bodyItem)
-			
-			if ("" == transformed) then
-				continue
-			end if
-
-			body.push(transformer.indent() + transformed)
-		end for
-
-		output = []
-		output.push(currentIndent + transformer.color("keyword", "else if") + " " + condition + " " + transformer.color("keyword", "then"))
-		output.push(body.join(char(10)))
-
-		transformer.decreaseIndent()
-
-		return output.join(char(10))
-	end function
-
-	CodeTransformations.ElseClause = function(transformer, item, stack)
-		debug("transformations.ElseClause")
-		currentIndent = transformer.indent()
-		transformer.increaseIndent()
-		body = []
-
-		for bodyItem in item.body
-			transformed = transformer.make(bodyItem)
-
-			if ("" == transformed) then
-				continue
-			end if
-
-			body.push(transformer.indent() + transformed)
-		end for
-
-		output = []
-		output.push(currentIndent + transformer.color("keyword", "else"))
-		output.push(body.join(char(10)))
-
-		transformer.decreaseIndent()
-
-		return output.join(char(10))
-	end function
-
-	CodeTransformations.ContinueStatement = function(transformer, item, stack)
-		debug("transformations.ContinueStatement")
-		return transformer.color("keyword", "continue")
-	end function
-
-	CodeTransformations.BreakStatement = function(transformer, item, stack)
-		debug("transformations.BreakStatement")
-		return transformer.color("keyword", "break")
-	end function
-
-	CodeTransformations.CallStatement = function(transformer, item, stack)
-		debug("transformations.CallStatement")
-		return transformer.make(item.expression)
-	end function
-
-	CodeTransformations.ListConstructorExpression = function(transformer, item, stack)
-		debug("transformations.ListConstructorExpression")
-		fields = []
-
-		for fieldItem in item.fields
-			fields.push(transformer.make(fieldItem))
-		end for
-
-		return "[" + fields.join(",") + "]"
-	end function
-
-	CodeTransformations.ListValue = function(transformer, item, stack)
-		debug("transformations.ListValue")
-		return transformer.make(item.value)
-	end function
-
-	CodeTransformations.BooleanLiteral = function(transformer, item, stack)
-		debug("transformations.BooleanLiteral")
-		return transformer.color("boolean", item.raw)
-	end function
-
-	CodeTransformations.EmptyExpression = function(transformer, item, stack)
-		debug("transformations.EmptyExpression")
-		return ""
-	end function
-
-	CodeTransformations.LogicalExpression = function(transformer, item, stack)
-		debug("transformations.LogicalExpression")
-		left = transformer.make(item.left)
-		right = transformer.make(item.right)
-		expression = [left, item.operator, right].join(" ")
-
-		return "(" + expression + ")"
-	end function
-
-	CodeTransformations.BinaryExpression = function(transformer, item, stack)
-		debug("transformations.BinaryExpression")
-		left = transformer.make(item.left)
-		right = transformer.make(item.right)
-		operator = item.operator
-		expression = [left, operator, right].join(" ")
-
-		if ("<<" == operator or ">>" == operator or ">>>" == operator or "|" == operator or "&" == operator or "^" == operator) then
-			expression = "bitwise(" + [ char(34) + operator + char(34), left, right].join(",") + ")"
-		else
-			expression = [left, operator, right].join(" ")
-		end if
-
-		return "(" + expression + ")"
-	end function
-
-	CodeTransformations.BinaryNegatedExpression = function(transformer, item, stack)
-		debug("transformations.BinaryNegatedExpression")
-		arg = transformer.make(item.arg)
-		operator = item.operator
-
-		return operator + arg
-	end function
-
-	CodeTransformations.Chunk = function(transformer, item, stack)
-		debug("transformations.Chunk")
-		body = []
-
-		for bodyItem in item.body
-			transformed = transformer.make(bodyItem)
-
-			if ("" == transformed) then
-				continue
-			end if
-
-			body.push(transformer.indent() + transformed)
-		end for
-
-		return body.join(char(10))
-	end function
-
-	Transformer = {}
-
-	Transformer.constructor = function(transformations, config)
-		me = self
-
-		me.currentStack = []
-		me.status = {"errors":[]}
-		me.config = config
-
-		me.config.setDefault({
-			"keyword-color": "#E11584",
-			"identifier-color": "#FFF",
-			"string-color": "#F9D71C",
-			"number-color": "#5E9E72",
-			"boolean-color": "#E11584",
-			"comment-color": "#878787",
-			"native-function-color": "#009dc4",
-			"native-methods": [
-				"exit",
-				"typeof",
-				"print",
-				"wait",
-				"time",
-				"typeof",
-				"md5",
-				"get_router",
-				"get_shell",
-				"nslookup",
-				"whois",
-				"is_valid_ip",
-				"is_lan_ip",
-				"command_info",
-				"current_date",
-				"current_path",
-				"parent_path",
-				"home_dir",
-				"program_path",
-				"active_user",
-				"user_mail_address",
-				"user_bank_number",
-				"format_columns",
-				"user_input",
-				"include_lib",
-				"bitwise",
-				"clear_screen",
-				"exit",
-				"import_" + "code",
-				"char"
-			].join(",")
-		})
-
-		me.nativeMethods = me.config.get("native-methods").split(",")
-		me.indentation = 0
-		me.transformations = transformations
-		me.next = null
-
-		if (config != null) then
-			me.config = config
-		end if
-
-		return me
-	end function
-
-	Transformer.hasError = function() 
-		return self.status.errors.len > 0
-	end function
-
-	Transformer.indent = function(offset)
-		me = self
-
-		if (offset == null) then
-			offset = 0
-		end if
-
-		indent = me.indentation + offset
-
-		if (indent < 0) then
-			indent = 0
-		end if
-
-		return char(9) * indent
-	end function
-
-	Transformer.increaseIndent = function()
-		me = self
-		me.indentation = me.indentation + 1
-		return me.indentation
-	end function
-
-	Transformer.decreaseIndent = function()
-		me = self
-		me.indentation = me.indentation - 1
-
-		if (me.indentation < 0) then
-			me.exception("Indentation malfunctioning.")
-			me.indentation = 0
-		end if
-
-		return me.indentation
-	end function
-
-	Transformer.exception = function(message) 
-		me = self
-		errMessage = "[Transformer] Error: " + message
-		debug(errMessage)
-		me.status.errors.push(errMessage)
-		return null
-	end function
-
-	Transformer.color = function(key, str)
-		me = self
-		colorKey = key + "-color"
-
-		if (me.config.data.hasIndex(colorKey)) then
-			return "<color=" + me.config.get(colorKey) + ">" + str + "</color>"
-		end if
-
-		return str
-	end function
-
-	Transformer.isNativeFunction = function(idtf)
-		me = self
-		return me.nativeMethods.indexOf(idtf) != null
-	end function
-
-	Transformer.make = function(o)
-		debug("Transformer.make")
-		me = self
-		currentStack = me.currentStack
-
-		if (not o) then
-			return ""
-		end if
-
-		if (not o.type) then
-			me.exception("Invalid ast type.")
-			return ""
-		end if
-
-		fn = @me.transformations[o.type]
-
-		if (not (@fn)) then
-			me.exception("Type does not exist.")
-			return ""
-		end if
-
-		currentStack.push(o)
-		result = fn(me, o, currentStack)
-		currentStack.pull()
-
-		return result
-	end function
-
-	Transformer.transform = function(chunk)
-		debug("Transformer.transform")
-		me = self
-
-		if ("Chunk" != chunk.type) then
-			me.exception("Expects chunk")
-			return ""
-		end if
-
-		return me.make(chunk)
-	end function
-
-	Transformer.getErrors = function()
-		return self.status.errors
-	end function
-
-	Highlighter = {}
-	Highlighter.Lexer = Lexer
-	Highlighter.Transformer = Transformer
-	Highlighter.Parser = Parser
-	Highlighter.VisualTransformations = VisualTransformations
-	Highlighter.CodeTransformations = CodeTransformations
-	Highlighter.errors = []
-
-	Highlighter.getParseStream = function(config)
-		debug("Highlighter.getParseIterator")
-		me = self
-
-		iterator = {}
-
-		iterator.classID = "highlighterParseStream"
-		iterator.Lexer = me.Lexer
-		iterator.transformer = (new me.Transformer).constructor(me.VisualTransformations, config)
-		iterator.write = function(content)
-			me = self
-			lexer = (new me.Lexer).constructor(content)
-			code = ""
-
-			token = lexer.next()
-
-			while (token)
-				currentToken = token
-				token = lexer.next()
-
-				me.transformer.next = token
-				code = code + me.transformer.make(currentToken)
-
-				if (currentToken.type == "eof") then
-					break
-				end if
-			end while
-
-			return code
-		end function
-
-		return iterator
-	end function
-
-	Highlighter.validate = function(content)
-		debug("Highlighter.validate")
-		me = self
-
-		parser = (new me.Parser).constructor(content)
-		chunk = parser.parseChunk()
-		me.errors = parser.getErrors()
-
-		if (me.errors.len > 0) then
-			return false
-		end if
-
-		return true
-	end function
-
-	return Highlighter
+	return transformer.color("string", char(34) + item.value + char(34))
 end function
 
-injector.def("highlighter", ["lexer", "parser"], @highlighterModule)
+VisualTransformations.num = function(transformer, item, stack)
+	debug("transformations.num")
+
+	return transformer.color("number", item.value)
+end function
+
+VisualTransformations.punc = function(transformer, item, stack)
+	debug("transformations.punc")
+
+	return item.value
+end function
+
+VisualTransformations.slice = function(transformer, item, stack)
+	debug("transformations.slice")
+
+	return item.value
+end function
+
+VisualTransformations.kwd = function(transformer, item, stack)
+	debug("transformations.kwd")
+	value = item.value
+
+	return transformer.color("keyword", item.value)
+end function
+
+VisualTransformations.nil = function(transformer, item, stack)
+	debug("transformations.nil")
+
+	return "null"
+end function
+
+VisualTransformations.bool = function(transformer, item, stack)
+	debug("transformations.bool")
+	displayValue = "false"
+
+	if (item.value) then
+		displayValue = "true"
+	end if
+
+	return transformer.color("boolean", displayValue)
+end function
+
+VisualTransformations.idtf = function(transformer, item, stack)
+	debug("transformations.idtf")
+
+	if (transformer.isNativeFunction(item.value)) then
+		return transformer.color("native-function", item.value)
+	end if
+
+	return transformer.color("identifier", item.value)
+end function
+
+VisualTransformations.eof = function(transformer, item, stack)
+	debug("transformations.eof")
+	return ""
+end function
+
+VisualTransformations.whtspc = function(transformer, item, stack)
+	debug("transformations.whtspc")
+	return item.value
+end function
+
+VisualTransformations.cmt = function(transformer, item, stack)
+	debug("transformations.cmt")
+	return transformer.color("comment", item.value)
+end function
+
+VisualTransformations.eol = function(transformer, item, stack)
+	debug("transformations.eol")
+	return ""
+end function
+
+VisualTransformations.nol = function(transformer, item, stack)
+	debug("transformations.nol")
+	return ""
+end function
+
+CodeTransformations = {}
+
+CodeTransformations.AssignmentStatement = function(transformer, item, stack)
+	debug("transformations.AssignmentStatement")
+	left = transformer.make(item.variable)
+	right = transformer.make(item.init)
+
+	return left + " = " + right
+end function
+
+CodeTransformations.MemberExpression = function(transformer, item, stack)
+	debug("transformations.MemberExpression")
+	identifier = transformer.make(item.identifier)
+	base = transformer.make(item.base)
+
+	return [base, identifier].join(item.indexer)
+end function
+
+CodeTransformations.FunctionDeclaration = function(transformer, item, stack)
+	debug("transformations.FunctionDeclaration")
+	currentIndent = transformer.indent()
+	transformer.increaseIndent()
+	name = " "
+	parameters = []
+	body = []
+
+	for parameterItem in item.parameters
+		parameters.push(transformer.make(parameterItem))
+	end for
+
+	for bodyItem in item.body
+		transformed = transformer.make(bodyItem)
+
+		if ("" == transformed) then
+			continue
+		end if
+
+		body.push(transformer.indent() + transformed)
+	end for
+
+	output = []
+	output.push(currentIndent + transformer.color("keyword", "function") + " (" + parameters.join(",") + ")")
+	output.push(body.join(char(10)))
+	output.push(currentIndent + transformer.color("keyword", "end function"))
+
+	transformer.decreaseIndent()
+
+	return output.join(char(10))
+end function
+
+CodeTransformations.MapConstructorExpression = function(transformer, item, stack)
+	debug("transformations.MapConstructorExpression")
+	fields = []
+
+	for fieldItem in item.fields
+		fields.push(transformer.make(fieldItem))
+	end for
+
+	return "{" + fields.join(", ") + "}"
+end function
+
+CodeTransformations.MapKeyString = function(transformer, item, stack)
+	debug("transformations.MapKeyString")
+	key = transformer.make(item.key)
+	value = transformer.make(item.value)
+
+	return [key, value].join(": ")
+end function
+
+CodeTransformations.Identifier = function(transformer, item, stack)
+	return item.value
+end function
+
+CodeTransformations.ReturnStatement = function(transformer, item, stack)
+	debug("transformations.ReturnStatement")
+	args = []
+
+	for argItem in item.arguments
+		args.push(transformer.make(argItem))
+	end for
+
+	return transformer.color("keyword", "return") + " " + args.join(",")
+end function
+
+CodeTransformations.NumericLiteral = function(transformer, item, stack)
+	return transformer.color("number", item.value)
+end function
+
+CodeTransformations.WhileStatement = function(transformer, item, stack)
+	debug("transformations.WhileStatement")
+	currentIndent = transformer.indent()
+	transformer.increaseIndent()
+	condition = transformer.make(item.condition)
+	body = []
+
+	for bodyItem in item.body
+		transformed = transformer.make(bodyItem)
+
+		if ("" == transformed) then
+			continue
+		end if
+
+		body.push(transformer.indent() + transformed)
+	end for
+
+	output = []
+	output.push(currentIndent + transformer.color("keyword", "while") + " " + condition)
+	output.push(body.join(char(10)))
+	output.push(currentIndent + transformer.color("keyword", "end while"))
+
+	transformer.decreaseIndent()
+
+	return output.join(char(10))
+end function
+
+CodeTransformations.CallExpression = function(transformer, item, stack)
+	debug("transformations.CallExpression")
+	base = transformer.make(item.base)
+	args = []
+
+	for argItem in item.arguments
+		args.push(transformer.make(argItem))
+	end for
+
+	return base + "(" + args.join(", ") + ")"
+end function
+
+CodeTransformations.StringLiteral = function(transformer, item, stack)
+	debug("transformations.StringLiteral")
+	return transformer.color("string", item.raw)
+end function
+
+CodeTransformations.SliceExpression = function(transformer, item, stack)
+	debug("transformations.SliceExpression")
+	left = transformer.make(item.left)
+	right = transformer.make(item.right)
+
+	return [left, right].join(": ")
+end function
+
+CodeTransformations.IndexExpression = function(transformer, item, stack)
+	debug("transformations.IndexExpression")
+	base = transformer.make(item.base)
+	index = transformer.make(item.index)
+
+	return base + "[" + index + "]"
+end function
+
+CodeTransformations.UnaryExpression = function(transformer, item, stack)
+	debug("transformations.UnaryExpression")
+	arg = transformer.make(item.argument)
+
+	if ("new" == item.operator) then
+		return "(" + transformer.color("keyword", item.operator) + " " + arg + ")"
+	end if
+
+	return item.operator + arg
+end function
+
+CodeTransformations.NegationExpression = function(transformer, item, stack)
+	debug("transformations.NegationExpression")
+	arg = transformer.make(item.argument)
+
+	return transformer.color("keyword", "not") + " " + arg
+end function
+
+CodeTransformations.IfShortcutStatement = function(transformer, item, stack)
+	debug("transformations.IfShortcutStatement")
+	clauses = []
+
+	for clausesItem in item.clauses
+		clauses.push(transformer.make(clausesItem))
+	end for
+
+	return clauses.join(" ")
+end function
+
+CodeTransformations.IfShortcutClause = function(transformer, item, stack)
+	debug("transformations.IfShortcutClause")
+	condition = transformer.make(item.condition)
+	statement = transformer.make(item.statement)
+
+	return transformer.color("keyword", "if") + " " + condition + " " + transformer.color("keyword", "then") + " " + statement
+end function
+
+CodeTransformations.ElseifShortcutClause = function(transformer, item, stack)
+	debug("transformations.ElseifShortcutClause")
+	condition = transformer.make(item.condition)
+	statement = transformer.make(item.statement)
+
+	return " " + transformer.color("keyword", "else if") + " " + condition + " " + transformer.color("keyword", "then") + " " + statement
+end function
+
+CodeTransformations.ElseShortcutClause = function(transformer, item, stack)
+	debug("transformations.ElseShortcutClause")
+	statement = transformer.make(item.statement)
+
+	return " " + transformer.color("keyword", "else") + " " + statement
+end function
+
+CodeTransformations.NilLiteral = function(transformer, item, stack)
+	debug("transformations.NilLiteral")
+	return item.raw
+end function
+
+CodeTransformations.ForGenericStatement = function(transformer, item, stack)
+	debug("transformations.ForGenericStatement")
+	currentIndent = transformer.indent()
+	transformer.increaseIndent()
+	variable = transformer.make(item.variable)
+	iterator = transformer.make(item.iterator)
+	body = []
+
+	for bodyItem in item.body
+		transformed = transformer.make(bodyItem)
+
+		if ("" == transformed) then
+			continue
+		end if
+
+		body.push(transformer.indent() + transformed)
+	end for
+
+	output = []
+	output.push(currentIndent + transformer.color("keyword", "for") + " " + variable + " " + transformer.color("keyword", "in") + " " + iterator)
+	output.push(body.join(char(10)))
+	output.push(currentIndent + transformer.color("keyword", "end for"))
+
+	transformer.decreaseIndent()
+
+	return output.join(char(10))
+end function
+
+CodeTransformations.IfStatement = function(transformer, item, stack)
+	debug("transformations.IfStatement")
+	currentIndent = transformer.indent()
+	clauses = []
+
+	for clausesItem in item.clauses
+		clauses.push(transformer.make(clausesItem))
+	end for
+
+	output = []
+	output.push(clauses.join(char(10)))
+	output.push(currentIndent + transformer.color("keyword", "end if"))
+
+	return output.join(char(10))
+end function
+
+CodeTransformations.IfClause = function(transformer, item, stack)
+	debug("transformations.IfClause")
+	transformer.increaseIndent()
+	condition = transformer.make(item.condition)
+	body = []
+
+	for bodyItem in item.body
+		transformed = transformer.make(bodyItem)
+
+		if ("" == transformed) then
+			continue
+		end if
+
+		body.push(transformer.indent() + transformed)
+	end for
+
+	output = []
+	output.push(transformer.color("keyword", "if") + " " + condition + " " + transformer.color("keyword", "then"))
+	output.push(body.join(char(10)))
+
+	transformer.decreaseIndent()
+
+	return output.join(char(10))
+end function
+
+CodeTransformations.ElseifClause = function(transformer, item, stack)
+	debug("transformations.ElseifClause")
+	currentIndent = transformer.indent()
+	transformer.increaseIndent()
+	condition = transformer.make(item.condition)
+	body = []
+
+	for bodyItem in item.body
+		transformed = transformer.make(bodyItem)
+		
+		if ("" == transformed) then
+			continue
+		end if
+
+		body.push(transformer.indent() + transformed)
+	end for
+
+	output = []
+	output.push(currentIndent + transformer.color("keyword", "else if") + " " + condition + " " + transformer.color("keyword", "then"))
+	output.push(body.join(char(10)))
+
+	transformer.decreaseIndent()
+
+	return output.join(char(10))
+end function
+
+CodeTransformations.ElseClause = function(transformer, item, stack)
+	debug("transformations.ElseClause")
+	currentIndent = transformer.indent()
+	transformer.increaseIndent()
+	body = []
+
+	for bodyItem in item.body
+		transformed = transformer.make(bodyItem)
+
+		if ("" == transformed) then
+			continue
+		end if
+
+		body.push(transformer.indent() + transformed)
+	end for
+
+	output = []
+	output.push(currentIndent + transformer.color("keyword", "else"))
+	output.push(body.join(char(10)))
+
+	transformer.decreaseIndent()
+
+	return output.join(char(10))
+end function
+
+CodeTransformations.ContinueStatement = function(transformer, item, stack)
+	debug("transformations.ContinueStatement")
+	return transformer.color("keyword", "continue")
+end function
+
+CodeTransformations.BreakStatement = function(transformer, item, stack)
+	debug("transformations.BreakStatement")
+	return transformer.color("keyword", "break")
+end function
+
+CodeTransformations.CallStatement = function(transformer, item, stack)
+	debug("transformations.CallStatement")
+	return transformer.make(item.expression)
+end function
+
+CodeTransformations.ListConstructorExpression = function(transformer, item, stack)
+	debug("transformations.ListConstructorExpression")
+	fields = []
+
+	for fieldItem in item.fields
+		fields.push(transformer.make(fieldItem))
+	end for
+
+	return "[" + fields.join(",") + "]"
+end function
+
+CodeTransformations.ListValue = function(transformer, item, stack)
+	debug("transformations.ListValue")
+	return transformer.make(item.value)
+end function
+
+CodeTransformations.BooleanLiteral = function(transformer, item, stack)
+	debug("transformations.BooleanLiteral")
+	return transformer.color("boolean", item.raw)
+end function
+
+CodeTransformations.EmptyExpression = function(transformer, item, stack)
+	debug("transformations.EmptyExpression")
+	return ""
+end function
+
+CodeTransformations.LogicalExpression = function(transformer, item, stack)
+	debug("transformations.LogicalExpression")
+	left = transformer.make(item.left)
+	right = transformer.make(item.right)
+	expression = [left, item.operator, right].join(" ")
+
+	return "(" + expression + ")"
+end function
+
+CodeTransformations.BinaryExpression = function(transformer, item, stack)
+	debug("transformations.BinaryExpression")
+	left = transformer.make(item.left)
+	right = transformer.make(item.right)
+	operator = item.operator
+	expression = [left, operator, right].join(" ")
+
+	if ("<<" == operator or ">>" == operator or ">>>" == operator or "|" == operator or "&" == operator or "^" == operator) then
+		expression = "bitwise(" + [ char(34) + operator + char(34), left, right].join(",") + ")"
+	else
+		expression = [left, operator, right].join(" ")
+	end if
+
+	return "(" + expression + ")"
+end function
+
+CodeTransformations.BinaryNegatedExpression = function(transformer, item, stack)
+	debug("transformations.BinaryNegatedExpression")
+	arg = transformer.make(item.arg)
+	operator = item.operator
+
+	return operator + arg
+end function
+
+CodeTransformations.Chunk = function(transformer, item, stack)
+	debug("transformations.Chunk")
+	body = []
+
+	for bodyItem in item.body
+		transformed = transformer.make(bodyItem)
+
+		if ("" == transformed) then
+			continue
+		end if
+
+		body.push(transformer.indent() + transformed)
+	end for
+
+	return body.join(char(10))
+end function
+
+Transformer = {}
+
+Transformer.constructor = function(transformations, config)
+	me = self
+
+	me.currentStack = []
+	me.status = {"errors":[]}
+	me.config = config
+
+	me.config.setDefault({
+		"keyword-color": "#E11584",
+		"identifier-color": "#FFF",
+		"string-color": "#F9D71C",
+		"number-color": "#5E9E72",
+		"boolean-color": "#E11584",
+		"comment-color": "#878787",
+		"native-function-color": "#009dc4",
+		"native-methods": [
+			"exit",
+			"typeof",
+			"print",
+			"wait",
+			"time",
+			"typeof",
+			"md5",
+			"get_router",
+			"get_shell",
+			"nslookup",
+			"whois",
+			"is_valid_ip",
+			"is_lan_ip",
+			"command_info",
+			"current_date",
+			"current_path",
+			"parent_path",
+			"home_dir",
+			"program_path",
+			"active_user",
+			"user_mail_address",
+			"user_bank_number",
+			"format_columns",
+			"user_input",
+			"include_lib",
+			"bitwise",
+			"clear_screen",
+			"exit",
+			"import_" + "code",
+			"char"
+		].join(",")
+	})
+
+	me.nativeMethods = me.config.get("native-methods").split(",")
+	me.indentation = 0
+	me.transformations = transformations
+	me.next = null
+
+	if (config != null) then
+		me.config = config
+	end if
+
+	return me
+end function
+
+Transformer.hasError = function() 
+	return self.status.errors.len > 0
+end function
+
+Transformer.indent = function(offset)
+	me = self
+
+	if (offset == null) then
+		offset = 0
+	end if
+
+	indent = me.indentation + offset
+
+	if (indent < 0) then
+		indent = 0
+	end if
+
+	return char(9) * indent
+end function
+
+Transformer.increaseIndent = function()
+	me = self
+	me.indentation = me.indentation + 1
+	return me.indentation
+end function
+
+Transformer.decreaseIndent = function()
+	me = self
+	me.indentation = me.indentation - 1
+
+	if (me.indentation < 0) then
+		me.exception("Indentation malfunctioning.")
+		me.indentation = 0
+	end if
+
+	return me.indentation
+end function
+
+Transformer.exception = function(message) 
+	me = self
+	errMessage = "[Transformer] Error: " + message
+	debug(errMessage)
+	me.status.errors.push(errMessage)
+	return null
+end function
+
+Transformer.color = function(key, str)
+	me = self
+	colorKey = key + "-color"
+
+	if (me.config.data.hasIndex(colorKey)) then
+		return "<color=" + me.config.get(colorKey) + ">" + str + "</color>"
+	end if
+
+	return str
+end function
+
+Transformer.isNativeFunction = function(idtf)
+	me = self
+	return me.nativeMethods.indexOf(idtf) != null
+end function
+
+Transformer.make = function(o)
+	debug("Transformer.make")
+	me = self
+	currentStack = me.currentStack
+
+	if (not o) then
+		return ""
+	end if
+
+	if (not o.type) then
+		me.exception("Invalid ast type.")
+		return ""
+	end if
+
+	fn = @me.transformations[o.type]
+
+	if (not (@fn)) then
+		me.exception("Type does not exist.")
+		return ""
+	end if
+
+	currentStack.push(o)
+	result = fn(me, o, currentStack)
+	currentStack.pull()
+
+	return result
+end function
+
+Transformer.transform = function(chunk)
+	debug("Transformer.transform")
+	me = self
+
+	if ("Chunk" != chunk.type) then
+		me.exception("Expects chunk")
+		return ""
+	end if
+
+	return me.make(chunk)
+end function
+
+Transformer.getErrors = function()
+	return self.status.errors
+end function
+
+Highlighter = {}
+Highlighter.Lexer = Lexer
+Highlighter.Transformer = Transformer
+Highlighter.Parser = Parser
+Highlighter.VisualTransformations = VisualTransformations
+Highlighter.CodeTransformations = CodeTransformations
+Highlighter.errors = []
+
+Highlighter.getParseStream = function(config)
+	debug("Highlighter.getParseIterator")
+	me = self
+
+	iterator = {}
+
+	iterator.classID = "highlighterParseStream"
+	iterator.Lexer = me.Lexer
+	iterator.transformer = (new me.Transformer).constructor(me.VisualTransformations, config)
+	iterator.write = function(content)
+		me = self
+		lexer = (new me.Lexer).constructor(content)
+		code = ""
+
+		token = lexer.next()
+
+		while (token)
+			currentToken = token
+			token = lexer.next()
+
+			me.transformer.next = token
+			code = code + me.transformer.make(currentToken)
+
+			if (currentToken.type == "eof") then
+				break
+			end if
+		end while
+
+		return code
+	end function
+
+	return iterator
+end function
+
+Highlighter.validate = function(content)
+	debug("Highlighter.validate")
+	me = self
+
+	parser = (new me.Parser).constructor(content)
+	chunk = parser.parseChunk()
+	me.errors = parser.getErrors()
+
+	if (me.errors.len > 0) then
+		return false
+	end if
+
+	return true
+end function

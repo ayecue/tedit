@@ -1,16 +1,10 @@
-loadLibModule = function()
-	loadLib = function(paths)
-		for path in paths
-			lib = include_lib(path)
-			if (lib) then
-				print("Loaded library from " + path) 
-				return lib
-			end if
-		end for
-		exit("Cannot find library: " + path)
-	end function
-
-	return @loadLib
+loadLib = function(paths)
+	for path in paths
+		lib = include_lib(path)
+		if (lib) then
+			print("Loaded library from " + path) 
+			return lib
+		end if
+	end for
+	exit("Cannot find library: " + path)
 end function
-
-injector.def("loadLib", @loadLibModule)

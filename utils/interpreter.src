@@ -1,7 +1,10 @@
+import_code("./injector.src")
+import_code("./lexer.src")
+import_code("./parser.src")
 //Obfuscated and minified :)
 Z=function(I)
 Х=I.dynResolve
-Ч=I.parser
+Ч=Parser
 d=I.dynApply
 e={"members":{}}
 e.add=function(g,h)
@@ -1958,7 +1961,7 @@ return Ӓ.run(ӓ)
 end function
 return J
 end function
-injector.def("interpreter",["dynResolve","parser","dynApply"],@Z)
+injector.def("interpreter",["dynResolve","dynApply"],@Z)
 ӕ=function()
 d={}
 Ӗ={}

@@ -1,959 +1,953 @@
-parserModule = function(deps)
-	Lexer = deps.lexer
+import_code("./lexer.src")
 
-	AST = {}
+AST = {}
 
-	AST.breakStatement = function(line)
-		return {"type": "BreakStatement","line": line}
-	end function
-	AST.continueStatement = function(line)
-		return {"type": "ContinueStatement","line": line}
-	end function
-	AST.returnStatement = function(args, line)
-		return {"type": "ReturnStatement", "arguments": args, "line": line}
-	end function
-	AST.ifStatement = function(clauses, line)
-		return {"type": "IfStatement","clauses": clauses,"line": line};
-	end function
-	AST.ifClause = function(condition, body, line)
-		return {"type": "IfClause","condition": condition,"body": body,"line": line}
-	end function
-	AST.elseifClause = function(condition, body, line)
-		return {"type": "ElseifClause","condition": condition,"body": body,"line": line}
-	end function
-	AST.elseClause = function(body, line)
-		return {"type": "ElseClause","body": body,"line": line};
-	end function
-	AST.whileStatement = function(condition, body, line)
-		return {"type": "WhileStatement","condition": condition,"body": body,"line": line}
-	end function
-	AST.assignmentStatement = function(variable, init, line)
-		return {"type": "AssignmentStatement","variable": variable,"init": init,"line": line}
-	end function
-	AST.callStatement = function(expression, line)
-		return {"type": "CallStatement","expression": expression,"line": line};
-	end function
-	AST.functionStatement = function(identifier, parameters, body, line)
-		return {"type": "FunctionDeclaration","identifier": identifier,"parameters": parameters,"body": body,"line": line};
-	end function
-	AST.forGenericStatement = function(variable, iterator, body, line)
-		return {"type": "ForGenericStatement","variable": variable,"iterator": iterator,"body": body,"line": line};
-	end function
-	AST.chunk = function(body, line)
-		return {"type": "Chunk","body": body,"line": line}
-	end function
-	AST.identifier = function(name, line)
-		return {"type": "Identifier","value": name,"line": line};
-	end function
-	AST.literal = function(type, value, raw, line)
-		if (type == "str") then 
-			type = "StringLiteral"
-		else if (type == "num") then
-			type = "NumericLiteral"
-		else if (type == "bool") then 
-			type = "BooleanLiteral"
-		else if (type == "nil") then 
-			type = "NilLiteral"
-		end if
+AST.breakStatement = function(line)
+	return {"type": "BreakStatement","line": line}
+end function
+AST.continueStatement = function(line)
+	return {"type": "ContinueStatement","line": line}
+end function
+AST.returnStatement = function(args, line)
+	return {"type": "ReturnStatement", "arguments": args, "line": line}
+end function
+AST.ifStatement = function(clauses, line)
+	return {"type": "IfStatement","clauses": clauses,"line": line};
+end function
+AST.ifClause = function(condition, body, line)
+	return {"type": "IfClause","condition": condition,"body": body,"line": line}
+end function
+AST.elseifClause = function(condition, body, line)
+	return {"type": "ElseifClause","condition": condition,"body": body,"line": line}
+end function
+AST.elseClause = function(body, line)
+	return {"type": "ElseClause","body": body,"line": line};
+end function
+AST.whileStatement = function(condition, body, line)
+	return {"type": "WhileStatement","condition": condition,"body": body,"line": line}
+end function
+AST.assignmentStatement = function(variable, init, line)
+	return {"type": "AssignmentStatement","variable": variable,"init": init,"line": line}
+end function
+AST.callStatement = function(expression, line)
+	return {"type": "CallStatement","expression": expression,"line": line};
+end function
+AST.functionStatement = function(identifier, parameters, body, line)
+	return {"type": "FunctionDeclaration","identifier": identifier,"parameters": parameters,"body": body,"line": line};
+end function
+AST.forGenericStatement = function(variable, iterator, body, line)
+	return {"type": "ForGenericStatement","variable": variable,"iterator": iterator,"body": body,"line": line};
+end function
+AST.chunk = function(body, line)
+	return {"type": "Chunk","body": body,"line": line}
+end function
+AST.identifier = function(name, line)
+	return {"type": "Identifier","value": name,"line": line};
+end function
+AST.literal = function(type, value, raw, line)
+	if (type == "str") then 
+		type = "StringLiteral"
+	else if (type == "num") then
+		type = "NumericLiteral"
+	else if (type == "bool") then 
+		type = "BooleanLiteral"
+	else if (type == "nil") then 
+		type = "NilLiteral"
+	end if
 
-		return {"type": type,"value": value,"raw": raw,"line": line}
-	end function
-	AST.binaryNegatedExpression = function(operator, arg, line)
-		return {"type": "BinaryNegatedExpression","arg": arg,"operator": operator,"line": line}
-	end function
-	AST.memberExpression = function(base, indexer, identifier, line)
-		return {"type": "MemberExpression","indexer": indexer,"identifier": identifier,"base": base,"line": line};
-	end function
-	AST.callExpression = function(base, args, line)
-		return {"type": "CallExpression","base": base,"arguments": args,"line": line}
-	end function
-	AST.unaryExpression = function(operator, argument, line)
-		return {"type": "UnaryExpression","operator": operator,"argument": argument,"line": line}
-	end function
-	AST.mapKeyString = function(key, value, line)
-		return {"type": "MapKeyString","key": key,"value": value,"line": line}
-	end function
-	AST.mapValue = function(value, line)
-		return {"type": "MapValue","value": value,"line": line};
-	end function
-	AST.mapConstructorExpression = function(fields, line)
-		return {"type": "MapConstructorExpression","fields": fields,"line": line};
-	end function
-	AST.listValue = function(value, line)
-		return {"type": "ListValue","value": value,"line": line};
-	end function
-	AST.listConstructorExpression = function(fields, line)
-		return {"type": "ListConstructorExpression","fields": fields,"line": line};
-	end function
-	AST.emptyExpression = function(line)
-		return {"type": "EmptyExpression","line": line}
-	end function
-	AST.indexExpression = function(base, index, line)
-		return {"type": "IndexExpression","base": base,"index": index,"line": line}
-	end function
-	AST.binaryExpression = function(operator, left, right, line)
-		type = "BinaryExpression"
-		if ("and" == operator or "or" == operator) then type = "LogicalExpression"
+	return {"type": type,"value": value,"raw": raw,"line": line}
+end function
+AST.binaryNegatedExpression = function(operator, arg, line)
+	return {"type": "BinaryNegatedExpression","arg": arg,"operator": operator,"line": line}
+end function
+AST.memberExpression = function(base, indexer, identifier, line)
+	return {"type": "MemberExpression","indexer": indexer,"identifier": identifier,"base": base,"line": line};
+end function
+AST.callExpression = function(base, args, line)
+	return {"type": "CallExpression","base": base,"arguments": args,"line": line}
+end function
+AST.unaryExpression = function(operator, argument, line)
+	return {"type": "UnaryExpression","operator": operator,"argument": argument,"line": line}
+end function
+AST.mapKeyString = function(key, value, line)
+	return {"type": "MapKeyString","key": key,"value": value,"line": line}
+end function
+AST.mapValue = function(value, line)
+	return {"type": "MapValue","value": value,"line": line};
+end function
+AST.mapConstructorExpression = function(fields, line)
+	return {"type": "MapConstructorExpression","fields": fields,"line": line};
+end function
+AST.listValue = function(value, line)
+	return {"type": "ListValue","value": value,"line": line};
+end function
+AST.listConstructorExpression = function(fields, line)
+	return {"type": "ListConstructorExpression","fields": fields,"line": line};
+end function
+AST.emptyExpression = function(line)
+	return {"type": "EmptyExpression","line": line}
+end function
+AST.indexExpression = function(base, index, line)
+	return {"type": "IndexExpression","base": base,"index": index,"line": line}
+end function
+AST.binaryExpression = function(operator, left, right, line)
+	type = "BinaryExpression"
+	if ("and" == operator or "or" == operator) then type = "LogicalExpression"
 
-		return {"type": type,"operator": operator,"left": left,"right": right,"line": line};
-	end function
-	AST.sliceExpression = function(left, right, line)
-		return {"type": "SliceExpression","left": left,"right": right,"line": line};
-	end function
-	AST.negationExpression = function(arg, line)
-		return {"type": "NegationExpression","argument": arg,"line": line};
-	end function
-	AST.featureDebuggerExpression = function(line)
-		return {"type": "FeatureDebuggerExpression","line": line}
-	end function
-	AST.importCodeExpression = function(filepath, line)
-		return {"type": "ImportCodeExpression","filepath": filepath,"line": line}
-	end function
+	return {"type": type,"operator": operator,"left": left,"right": right,"line": line};
+end function
+AST.sliceExpression = function(left, right, line)
+	return {"type": "SliceExpression","left": left,"right": right,"line": line};
+end function
+AST.negationExpression = function(arg, line)
+	return {"type": "NegationExpression","argument": arg,"line": line};
+end function
+AST.featureDebuggerExpression = function(line)
+	return {"type": "FeatureDebuggerExpression","line": line}
+end function
+AST.importCodeExpression = function(filepath, line)
+	return {"type": "ImportCodeExpression","filepath": filepath,"line": line}
+end function
 
-	Parser = {}
-	Parser.Lexer = Lexer
-	Parser.AST = AST
-	Parser.precedence = {"^": 12, "*": 10, "%": 10, "/": 10, "+": 9, "-": 9, "<": 3, ">": 3, "<=": 3, ">=": 3, "==": 3, "!=": 3, "or": 1, "and": 2}
-	Parser.nonNilLiterals = ["str", "num", "bool"]
-	Parser.literals = ["str", "num", "bool", "nil"]
-	Parser.breakingSortcut = ["else" ,"else if" ,"<eof>" ,"end for" ,"end while" ,"end function" ,"end if"]
-	Parser.constructor = function(content) 
-		me = self
+Parser = {}
+Parser.Lexer = Lexer
+Parser.AST = AST
+Parser.precedence = {"^": 12, "*": 10, "%": 10, "/": 10, "+": 9, "-": 9, "<": 3, ">": 3, "<=": 3, ">=": 3, "==": 3, "!=": 3, "or": 1, "and": 2}
+Parser.nonNilLiterals = ["str", "num", "bool"]
+Parser.literals = ["str", "num", "bool", "nil"]
+Parser.breakingSortcut = ["else" ,"else if" ,"<eof>" ,"end for" ,"end while" ,"end function" ,"end if"]
+Parser.constructor = function(content) 
+	me = self
 
-		me.content = content
-		me.lexer = (new me.Lexer).constructor(content)
-		me.history = []
-		me.prefetchedTokens = []
-		me.token = null
-		me.previousToken = null
-		me.status = {"errors":[]}
+	me.content = content
+	me.lexer = (new me.Lexer).constructor(content)
+	me.history = []
+	me.prefetchedTokens = []
+	me.token = null
+	me.previousToken = null
+	me.status = {"errors":[]}
 
-		return me
-	end function
+	return me
+end function
 
-	Parser.next = function()
-		debug("parser.next")
-		me = self
+Parser.next = function()
+	debug("parser.next")
+	me = self
 
-		if (me.previousToken) then
-			me.history.push(me.previousToken)
-		end if
+	if (me.previousToken) then
+		me.history.push(me.previousToken)
+	end if
 
-		me.previousToken = me.token
-		me.token = me.fetch()
+	me.previousToken = me.token
+	me.token = me.fetch()
 
-		return me
-	end function
+	return me
+end function
 
-	Parser.isBlockFollow = function(token) 
-		type = token.type
-		value = token.value
-		if ("eof" == type) then return true
-		if ("kwd" != type) then return false
-		return value.indexOf("else") == 0 or value.indexOf("end") == 0 or "eol" == type
-	end function
+Parser.isBlockFollow = function(token) 
+	type = token.type
+	value = token.value
+	if ("eof" == type) then return true
+	if ("kwd" != type) then return false
+	return value.indexOf("else") == 0 or value.indexOf("end") == 0 or "eol" == type
+end function
 
-	Parser.consume = function(value) 
-		me = self
-		if (value == me.token.value) then
-			me.next()
-			return true
-		end if
-		return false
-	end function
+Parser.consume = function(value) 
+	me = self
+	if (value == me.token.value) then
+		me.next()
+		return true
+	end if
+	return false
+end function
 
-	Parser.fetch = function()
-		debug("parser.fetch")
-		me = self
+Parser.fetch = function()
+	debug("parser.fetch")
+	me = self
 
-		if (me.hasError()) then
+	if (me.hasError()) then
+		return {"type": "eof", "value":"<eof>", "line": "n/a"}
+	end if
+
+	me.prefetch(1)
+	token = me.prefetchedTokens.pull()
+	debug(token.value)
+
+	return token
+end function
+
+Parser.prefetch = function(offset)
+	debug("parser.prefetch")
+	me = self
+
+	if (me.hasError()) then
+		return {"type": "eof", "value":"<eof>", "line": "n/a"}
+	end if
+
+	offsetIndex = offset - 1
+
+	while (me.prefetchedTokens.len < offset)
+		next = me.lexer.next()
+		if (me.lexer.hasError()) then
+			me.exception("Lexer failed: " + me.lexer.status.error)
 			return {"type": "eof", "value":"<eof>", "line": "n/a"}
 		end if
+		if (not next) then break
+		if (next.type == "whtspc") then continue
+		me.prefetchedTokens.push(next)
+		if (next.type == "eof") then break
+	end while
 
-		me.prefetch(1)
-		token = me.prefetchedTokens.pull()
-		debug(token.value)
+	return me.prefetchedTokens[offsetIndex]
+end function
 
-		return token
-	end function
-
-	Parser.prefetch = function(offset)
-		debug("parser.prefetch")
-		me = self
-
-		if (me.hasError()) then
-			return {"type": "eof", "value":"<eof>", "line": "n/a"}
-		end if
-
-		offsetIndex = offset - 1
-
-		while (me.prefetchedTokens.len < offset)
-			next = me.lexer.next()
-			if (me.lexer.hasError()) then
-				me.exception("Lexer failed: " + me.lexer.status.error)
-				return {"type": "eof", "value":"<eof>", "line": "n/a"}
-			end if
-			if (not next) then break
-			if (next.type == "whtspc") then continue
-			me.prefetchedTokens.push(next)
-			if (next.type == "eof") then break
-		end while
-
-		return me.prefetchedTokens[offsetIndex]
-	end function
-
-	Parser.consumeMany = function(values) 
-		me = self
-		if (values.indexOf(me.token.value) != null) then
-			me.next()
-			return true
-		end if
-		return false
-	end function
-
-	Parser.expect = function(value) 
-		me = self
-		if (value == me.token.value) then return me.next()
-		me.exception("Unexpected value " + me.token.value + ". Expected: " + value, me.token.line)
-		return null
-	end function
-
-	Parser.expectMany = function(values) 
-		me = self
-		if (values.indexOf(me.token.value) != null) then return me.next()
-		me.exception("Unexpected value " + me.token.value + ". Expected: " + values, me.token.line)
-		return null
-	end function
-
-	Parser.isUnary = function(token)
-		type = token.type
-		value = token.value
-		if ("punc" == type) then return "@" == value
-		if ("kwd" == type) then return "new" == value
-		return false
-	end function
-
-	Parser.parseIdentifier = function()
-		debug("parser.parseIdentifier")
-		me = self
-		mainStatementLine = me.token.line
-		identifier = me.token.value
-		if ("idtf" == me.token.type) then
-			me.next()
-			return me.AST.identifier(identifier, mainStatementLine)
-		end if
-		me.exception("Unexpected identifier", me.token.line)
-		return null
-	end function
-
-	Parser.parseMapConstructor = function(flowContext)
-		debug("parser.parseMapConstructor")
-		me = self
-		mainStatementLine = me.token.line
-		fields = []
-		key = null
-		value = null
-
-		while (true)
-			if ("str" == me.token.type and ":" == me.prefetch(1).value) then
-				mapKeyStringLine = me.token.line
-				key = me.parsePrimaryExpression()
-				me.next()
-				value = me.parseExpectedExpression(flowContext)
-				fields.push(me.AST.mapKeyString(key, value, mapKeyStringLine))
-			end if
-			if (",;".indexOf(me.token.value) >= 0) then
-				me.next()
-				continue
-			end if
-			break
-		end while
-
-		me.expect("}")
-
-		return me.AST.mapConstructorExpression(fields, mainStatementLine)
-	end function
-
-	Parser.parseListConstructor = function(flowContext)
-		debug("parser.parseListConstructor")
-		me = self
-		mainStatementLine = me.token.line
-		fields = []
-		key = null
-		value = null
-
-		while (true)
-			listValueLine = me.token.line
-			value = me.parseExpression(flowContext)
-			if (value != null) then fields.push(me.AST.listValue(value, listValueLine))
-			if (",;".indexOf(me.token.value) >= 0) then
-				me.next()
-				continue
-			end if
-			break
-		end while
-		me.expect("]")
-		return me.AST.listConstructorExpression(fields, mainStatementLine)
-	end function
-
-	Parser.parseRighthandExpressionGreedy = function(base, flowContext)
-		debug("parser.parseRighthandExpressionGreedy")
-		me = self
-
-		while (true)
-			newBase = me.parseRighthandExpressionPart(base, flowContext)
-			if (newBase == null) then break
-			base = newBase
-		end while
-
-		return base
-	end function
-
-	Parser.parseRighthandExpression = function(flowContext)
-		debug("parser.parseRighthandExpression")
-		me = self
-		base = null
-		name = null
-
-		if ("idtf" == me.token.type) then
-			name = me.token.value
-			base = me.parseIdentifier()
-		else if (me.consume("(")) then
-			base = me.parseExpectedExpression(flowContext)
-			me.expect(")")
-		else
-			return null
-		end if
-
-		return me.parseRighthandExpressionGreedy(base, flowContext)
-	end function
-
-	Parser.parseIndexExpression = function(base, flowContext)
-		debug("parser.parseIndexExpression")
-		me = self
-		mainStatementLine = me.token.line
-		offset = 1
-		token = me.token
-
-		while (true)
-			if (token.value == "]") then break
-			if (token.value == ":" and token.type == "slice") then
-				left = null
-				right = null
-
-				if (not me.consume(":")) then
-					left = me.parseExpectedExpression(flowContext);
-					me.expect(":");
-				else
-					left = me.AST.emptyExpression(mainStatementLine);
-				end if
-
-				if (not me.consume("]")) then
-					right = me.parseExpectedExpression(flowContext);
-					me.expect("]");
-				else
-					right = me.AST.emptyExpression(mainStatementLine);
-				end if
-
-				sliceExpression = me.AST.sliceExpression(left, right, mainStatementLine);
-
-				return me.AST.indexExpression(base, sliceExpression, mainStatementLine);
-			end if
-
-			token = me.prefetch(offset);
-			offset = offset + 1;
-		end while
-
-		expression = me.parseExpectedExpression(flowContext)
-		me.expect("]")
-
-		return me.AST.indexExpression(base, expression, mainStatementLine)
-	end function
-
-	Parser.parseRighthandExpressionPart = function(base, flowContext)
-		debug("parser.parseRighthandExpressionPart")
-		me = self
-		mainStatementLine = me.token.line
-		expression = null
-		identifier = null
-		type = me.token.type
-
-		if ("punc" == type) then
-			value = me.token.value
-
-			if ("[" == value) then
-				me.next()
-				return me.parseIndexExpression(base, expression)
-			else if ("." == value) then
-				me.next()
-				identifier = me.parseIdentifier()
-				return me.AST.memberExpression(base, ".", identifier, mainStatementLine)
-			else if ("(" == value) then
-				return me.parseCallExpression(base, flowContext)
-			end if
-		end if
-
-		return null
-	end function
-
-	Parser.parseCallExpression = function(base, flowContext)
-		debug("parser.parseCallExpression")
-		me = self
-		mainStatementLine = me.token.line
-
-		if ("punc" == me.token.type) then
-			value = me.token.value
-
-			if ("(" == value) then
-				if (me.token.line != me.previousToken.line) then
-					me.exception("Unexpected line", mainStatementLine)
-					return null
-				end if
-
-				me.next()
-				expressions = []
-				expression = me.parseExpression(flowContext)
-
-				if (null != expression) then expressions.push(expression)
-
-				while (me.consume(","))
-					expression = me.parseExpectedExpression(flowContext)
-					expressions.push(expression)
-				end while
-
-				me.expect(")")
-				return me.AST.callExpression(base, expressions, mainStatementLine)
-			end if
-		end if
-
-		me.exception("Unexpected arguments", mainStatementLine)
-		return null
-	end function
-
-	Parser.parseFloatExpression = function(baseValue)
-		debug("parser.parseFloatExpression")
-		if (baseValue == 0) then baseValue = ""
-		me = self
-		mainStatementLine = me.token.line
+Parser.consumeMany = function(values) 
+	me = self
+	if (values.indexOf(me.token.value) != null) then
 		me.next()
-		floatValue = [baseValue, me.token.value].join(".")
+		return true
+	end if
+	return false
+end function
+
+Parser.expect = function(value) 
+	me = self
+	if (value == me.token.value) then return me.next()
+	me.exception("Unexpected value " + me.token.value + ". Expected: " + value, me.token.line)
+	return null
+end function
+
+Parser.expectMany = function(values) 
+	me = self
+	if (values.indexOf(me.token.value) != null) then return me.next()
+	me.exception("Unexpected value " + me.token.value + ". Expected: " + values, me.token.line)
+	return null
+end function
+
+Parser.isUnary = function(token)
+	type = token.type
+	value = token.value
+	if ("punc" == type) then return "@" == value
+	if ("kwd" == type) then return "new" == value
+	return false
+end function
+
+Parser.parseIdentifier = function()
+	debug("parser.parseIdentifier")
+	me = self
+	mainStatementLine = me.token.line
+	identifier = me.token.value
+	if ("idtf" == me.token.type) then
 		me.next()
-		base = me.AST.literal("num", floatValue, floatValue, mainStatementLine)
-		return base
-	end function
+		return me.AST.identifier(identifier, mainStatementLine)
+	end if
+	me.exception("Unexpected identifier", me.token.line)
+	return null
+end function
 
-	Parser.parsePrimaryExpression = function(flowContext)
-		debug("parser.parsePrimaryExpression")
-		me = self
-		mainStatementLine = me.token.line
-		value = me.token.value
-		type = me.token.type
+Parser.parseMapConstructor = function(flowContext)
+	debug("parser.parseMapConstructor")
+	me = self
+	mainStatementLine = me.token.line
+	fields = []
+	key = null
+	value = null
 
-		if (me.literals.indexOf(type) != null) then
-			rangeStart = me.token.range[0]
-			rangeEnd = me.token.range[1]
-			raw = me.content[rangeStart:rangeEnd]
-			base = me.AST.literal(type, value, raw, mainStatementLine)
-
-			if ("nil" != type and me.prefetch(1).value == ".") then
-				me.next()
-				if ("num" == type and "num" == me.prefetch(1).type) then
-					base = me.parseFloatExpression(value)
-				else
-					base = me.parseRighthandExpressionGreedy(base, flowContext)
-				end if
-			else
-				me.next()
-			end if
-
-			return base
-		else if ("." == value and "num" == me.prefetch(1).type) then
-			return me.parseFloatExpression(0)
-		else if ("kwd" == type and "function" == value) then
+	while (true)
+		if ("str" == me.token.type and ":" == me.prefetch(1).value) then
+			mapKeyStringLine = me.token.line
+			key = me.parsePrimaryExpression()
 			me.next()
-			return me.parseFunctionDeclaration(flowContext)
-		else if (me.consumeMany(["{", "["])) then
-			base = null
-			if ("{" == value) then
-				base = me.parseMapConstructor(flowContext)
-			else
-				base = me.parseListConstructor(flowContext)
-			end if
-
-			base = me.parseRighthandExpressionGreedy(base, flowContext)
-
-			return base
+			value = me.parseExpectedExpression(flowContext)
+			fields.push(me.AST.mapKeyString(key, value, mapKeyStringLine))
 		end if
-
-		return null
-	end function
-
-	Parser.parseSubExpression = function (flowContext, minPrecedence)
-		debug("parser.parseSubExpression")
-		if (minPrecedence == null) then minPrecedence = 0
-		me = self
-		mainStatementLine = me.token.line
-		operator = me.token.value
-		expression = null
-
-		if (me.isUnary(me.token)) then
+		if (",;".indexOf(me.token.value) >= 0) then
 			me.next()
-			argument = me.parsePrimaryExpression(flowContext)
-			if (null == argument) then
-				argument = me.parseRighthandExpression(flowContext)
-			end if
-			expression = me.AST.unaryExpression(operator, argument, mainStatementLine)
-		else if ("kwd" == me.token.type and me.token.value == "not") then
+			continue
+		end if
+		break
+	end while
+
+	me.expect("}")
+
+	return me.AST.mapConstructorExpression(fields, mainStatementLine)
+end function
+
+Parser.parseListConstructor = function(flowContext)
+	debug("parser.parseListConstructor")
+	me = self
+	mainStatementLine = me.token.line
+	fields = []
+	key = null
+	value = null
+
+	while (true)
+		listValueLine = me.token.line
+		value = me.parseExpression(flowContext)
+		if (value != null) then fields.push(me.AST.listValue(value, listValueLine))
+		if (",;".indexOf(me.token.value) >= 0) then
 			me.next()
-			argument = me.parseSubExpression(flowContext, 10)
-			expression = me.AST.negationExpression(argument, mainStatementLine)
+			continue
 		end if
-		if (null == expression) then
-			expression = me.parsePrimaryExpression(flowContext)
+		break
+	end while
+	me.expect("]")
+	return me.AST.listConstructorExpression(fields, mainStatementLine)
+end function
 
-			if (null == expression) then
-				expression = me.parseRighthandExpression(flowContext)
-			end if
-		end if
+Parser.parseRighthandExpressionGreedy = function(base, flowContext)
+	debug("parser.parseRighthandExpressionGreedy")
+	me = self
 
-		precedence = null
+	while (true)
+		newBase = me.parseRighthandExpressionPart(base, flowContext)
+		if (newBase == null) then break
+		base = newBase
+	end while
 
-		while (true)
-			operator = me.token.value
+	return base
+end function
 
-			if (me.precedence.hasIndex(operator)) then
-				precedence = me.precedence[operator]
-			else
-				precedence = 0
-			end if
+Parser.parseRighthandExpression = function(flowContext)
+	debug("parser.parseRighthandExpression")
+	me = self
+	base = null
+	name = null
 
-			if (precedence == 0 or precedence <= minPrecedence) then break
-			if ("^" == operator) then precedence = precedence - 1
-			me.next()
-
-			right = me.parseSubExpression(flowContext, precedence)
-
-			if (null == right) then
-				right = me.AST.emptyExpression(mainStatementLine)
-			end if
-
-			if (expression == null and (operator == "-" or operator == "+")) then
-				expression = me.AST.binaryNegatedExpression(operator, right, mainStatementLine)
-			else if (right.type == "EmptyExpression" and (me.token.value == "-" or me.token.value == "+")) then
-				negationOperator = me.token.value
-				me.next()
-				arg = me.parseSubExpression(flowContext, precedence)
-				negationExpression = me.AST.binaryNegatedExpression(negationOperator, arg, mainStatementLine)
-
-				expression = me.AST.binaryExpression(operator, expression, negationExpression, mainStatementLine)
-			else
-				expression = me.AST.binaryExpression(operator, expression, right, mainStatementLine)
-			end if
-		end while
-
-		return expression
-	end function
-
-	Parser.parseNativeImportCodeStatement = function()
-		me = self
-		mainStatementLine = me.token.line
-		filepath = null
-
-		me.expect("(")
-
-		if ("str" == me.token.type) then
-			filepath = me.parsePrimaryExpression()
-		else
-			me.exception("Unexpected non literal value in import_code")
-			return null
-		end if
-
+	if ("idtf" == me.token.type) then
+		name = me.token.value
+		base = me.parseIdentifier()
+	else if (me.consume("(")) then
+		base = me.parseExpectedExpression(flowContext)
 		me.expect(")")
-		me.expect(";")
-
-		return me.AST.importCodeExpression(filepath, mainStatementLine)
-	end function
-
-	Parser.parseWhileStatement = function(flowContext)
-		debug("parser.parseWhileStatement")
-		me = self
-		mainStatementLine = me.token.line
-		condition = me.parseExpectedExpression(flowContext)
-
-		body = null
-		if ("eol" == me.token.type) then
-			body = me.parseBlock(flowContext)
-			me.expect("end while")
-		else
-			body = me.parseBlockShortcut(flowContext)
-			me.expectMany(["end while", ";", "<eof>"])
-		end if
-
-		return me.AST.whileStatement(condition, body, mainStatementLine)
-	end function
-
-	Parser.parseExpression = function(flowContext)
-		debug("parser.parseExpression")
-		me = self
-		expression = me.parseSubExpression(flowContext)
-		return expression
-	end function
-
-	Parser.parseExpectedExpression = function(flowContext)
-		debug("parser.parseExpectedExpression")
-		me = self
-		expression = me.parseExpression(flowContext)
-		if (expression != null) then return expression
-		me.exception("Unexpected expression", me.token.line)
+	else
 		return null
-	end function
+	end if
 
-	Parser.parseIfShortcutStatement = function(flowContext, condition)
-		me = self
-		clauses = []
-		mainStatementLine = me.token.line
-		statementLine = mainStatementLine
-		body = []
+	return me.parseRighthandExpressionGreedy(base, flowContext)
+end function
 
-		body = me.parseBlockShortcut(flowContext)
+Parser.parseIndexExpression = function(base, flowContext)
+	debug("parser.parseIndexExpression")
+	me = self
+	mainStatementLine = me.token.line
+	offset = 1
+	token = me.token
 
-		clauses.push(me.AST.ifClause(condition, body, statementLine))
+	while (true)
+		if (token.value == "]") then break
+		if (token.value == ":" and token.type == "slice") then
+			left = null
+			right = null
 
-		while (me.consume("else if"))
-			statementLine = me.token.line
-			condition = me.parseExpectedExpression(flowContext)
-			me.expect("then")
-			body = me.parseBlockShortcut(flowContext)
+			if (not me.consume(":")) then
+				left = me.parseExpectedExpression(flowContext);
+				me.expect(":");
+			else
+				left = me.AST.emptyExpression(mainStatementLine);
+			end if
 
-			clauses.push(me.AST.elseifClause(condition, body, statementLine))
-		end while
+			if (not me.consume("]")) then
+				right = me.parseExpectedExpression(flowContext);
+				me.expect("]");
+			else
+				right = me.AST.emptyExpression(mainStatementLine);
+			end if
 
-		if (me.consume("else")) then
-			statementLine = me.token.line
-			body = me.parseBlockShortcut(flowContext)
+			sliceExpression = me.AST.sliceExpression(left, right, mainStatementLine);
 
-			clauses.push(me.AST.elseClause(body, statementLine))
+			return me.AST.indexExpression(base, sliceExpression, mainStatementLine);
 		end if
 
-		me.consumeMany(["end if", ";", "<eof>"])
+		token = me.prefetch(offset);
+		offset = offset + 1;
+	end while
 
-		return me.AST.ifStatement(clauses, mainStatementLine)
-	end function
+	expression = me.parseExpectedExpression(flowContext)
+	me.expect("]")
 
-	Parser.parseIfStatement = function(flowContext)
-		debug("parser.parseIfStatement")
-		me = self
-		clauses = []
-		mainStatementLine = me.token.line
-		statementLine = mainStatementLine
-		condition = null
-		body = null
+	return me.AST.indexExpression(base, expression, mainStatementLine)
+end function
 
-		condition = me.parseExpectedExpression(flowContext)
-		me.expect("then")
+Parser.parseRighthandExpressionPart = function(base, flowContext)
+	debug("parser.parseRighthandExpressionPart")
+	me = self
+	mainStatementLine = me.token.line
+	expression = null
+	identifier = null
+	type = me.token.type
 
-		if ("eol" != me.token.type) then
-			return me.parseIfShortcutStatement(flowContext, condition)
+	if ("punc" == type) then
+		value = me.token.value
+
+		if ("[" == value) then
+			me.next()
+			return me.parseIndexExpression(base, expression)
+		else if ("." == value) then
+			me.next()
+			identifier = me.parseIdentifier()
+			return me.AST.memberExpression(base, ".", identifier, mainStatementLine)
+		else if ("(" == value) then
+			return me.parseCallExpression(base, flowContext)
 		end if
+	end if
 
-		body = me.parseBlock(flowContext)
-		clauses.push(me.AST.ifClause(condition, body, statementLine))
+	return null
+end function
 
-		while (me.consume("else if"))
-			statementLine = mainStatementLine
-			condition = me.parseExpectedExpression(flowContext)
-			me.expect("then")
-			body = me.parseBlock(flowContext)
-			clauses.push(me.AST.elseifClause(condition, body, statementLine))
-		end while
+Parser.parseCallExpression = function(base, flowContext)
+	debug("parser.parseCallExpression")
+	me = self
+	mainStatementLine = me.token.line
 
-		if (me.consume("else")) then
-			statementLine = mainStatementLine
-			body = me.parseBlock(flowContext)
-			clauses.push(me.AST.elseClause(body, statementLine))
-		end if
+	if ("punc" == me.token.type) then
+		value = me.token.value
 
-		me.expect("end if")
+		if ("(" == value) then
+			if (me.token.line != me.previousToken.line) then
+				me.exception("Unexpected line", mainStatementLine)
+				return null
+			end if
 
-		return me.AST.ifStatement(clauses, mainStatementLine)
-	end function
-
-	Parser.parseReturnStatement = function(flowContext, isShortcutStatement)
-		me = self
-		mainStatementLine = me.token.line
-		expressions = []
-
-		if ("end" != me.token.value) then
+			me.next()
+			expressions = []
 			expression = me.parseExpression(flowContext)
 
-			if (null != expression) then
-				expressions.push(expression)
-			end if
+			if (null != expression) then expressions.push(expression)
 
 			while (me.consume(","))
 				expression = me.parseExpectedExpression(flowContext)
 				expressions.push(expression)
 			end while
 
-			if (not isShortcutStatement) then
-				me.consume(";")
-			end if
-		end if
-
-		return me.AST.returnStatement(expressions, mainStatementLine)
-	end function
-
-	Parser.parseAssignmentOrCallStatement = function(flowContext)
-		debug("parser.parseAssignmentOrCallStatement")
-		me = self
-
-		if (me.hasError()) then
-			return null
-		end if
-
-		mainStatementLine = me.token.line
-		base = null
-		last = {"range":[-1, -1],"type":"unknown"}
-
-		if ("idtf" == me.token.type) then
-			base = me.parseIdentifier()
-		else if ("(" == me.token.value) then
-			me.next()
-			base = me.parseExpectedExpression(flowContext)
 			me.expect(")")
-		else if (me.nonNilLiterals.indexOf(me.token.type) != null) then
-			base = me.parseExpectedExpression(flowContext)
-		else if ("[" == me.token.value or "{" == me.token.value) then
-			base = me.parseExpectedExpression(flowContext)
-		else
-			me.exception("Unexpected assignment or call", mainStatementLine)
-			return null
+			return me.AST.callExpression(base, expressions, mainStatementLine)
 		end if
+	end if
 
-		while ("punc" == me.token.type and "=" != me.token.value and ";" != me.token.value and "<eof>" != me.token.value)
-			if (last != null and me.token.range[0] == last.range[0] and me.token.range[1] == last.range[1]) then
-				me.exception("Unexpected punctuator", me.token.line)
-				return null
-			end if
-
-			last = me.token
-			base = me.parseRighthandExpressionGreedy(base, flowContext)
-		end while
-
-		if (";" == me.token.value or "<eof>" == me.token.value) then
-			if (me.literals.indexOf(last.type) != null) then
-				return base
-			end if
-
-			return me.AST.callStatement(base, mainStatementLine)
-		end if
-
-		me.expect("=")
-
-		value = me.parseExpectedExpression(flowContext)
-
-		return me.AST.assignmentStatement(base, value, mainStatementLine)
-	end function
-
-	Parser.parseForStatement = function(flowContext)
-		debug("parser.parseForStatement")
-		me = self
-		mainStatementLine = me.token.line
-		me.consume("(")
-		variable = me.parseIdentifier()
-
-		me.expect("in")
-		iterator = me.parseExpectedExpression(flowContext)
-		me.consume(")")
-
-		body = null
-		if ("eol" == me.token.type) then
-			body = me.parseBlock(flowContext)
-			me.expect("end for")
-		else
-			body = me.parseBlockShortcut(flowContext)
-			me.expectMany(["end for", ";", "<eof>"])
-		end if
-
-		return me.AST.forGenericStatement(variable, iterator, body, mainStatementLine)
-	end function
-
-	Parser.parseFunctionDeclaration = function(flowContext)
-		me = self
-		mainStatementLine = me.token.line
-		parameters = []
-		me.expect("(")
-
-		if (not me.consume(")")) then
-			while (true)
-				if ("idtf" == me.token.type) then
-					parameter = me.parseIdentifier()
-					defaultValue = null
-					if (me.consume("=")) then
-						defaultValue = me.parseExpectedExpression(flowContext)
-					end if
-					parameters.push({"path":parameter, "defaultValue": defaultValue})
-					if (me.consume(",")) then
-						continue
-					end if
-				else
-					me.exception("Unexpected parameter")
-				end if
-
-				me.expect(")")
-				break
-			end while
-		end if
-
-		body = null
-		if ("eol" == me.token.type) then
-			body = me.parseBlock(flowContext)
-			me.expect("end function")
-		else
-			body = me.parseBlockShortcut(flowContext)
-			me.expectMany(["end function", ";", "<eof>"])
-		end if
-
-		return me.AST.functionStatement("anon", parameters, body, mainStatementLine)
-	end function
-
-	Parser.parseStatement = function(flowContext, isShortcutStatement)
-		debug("parser.parseStatement")
-		me = self
-
-		if (me.hasError()) then
-			return null
-		end if
-
-		if ("kwd" == me.token.type) then
-			value = me.token.value
-
-			if ("if" == value) then
-				me.next()
-				return me.parseIfStatement(flowContext)
-			else if ("return" == value) then
-				me.next()
-				return me.parseReturnStatement(flowContext, isShortcutStatement)
-			else if ("function" == value) then
-				me.next()
-				return me.parseFunctionDeclaration(flowContext)
-			else if ("while" == value) then
-				me.next()
-				return me.parseWhileStatement(flowContext)
-			else if ("for" == value) then
-				me.next()
-				return me.parseForStatement(flowContext)
-			else if ("continue" == value) then
-				me.next()
-				return me.AST.continueStatement()
-			else if ("break" == value) then
-				me.next()
-				return me.AST.breakStatement()
-			else if ("break" == value) then
-				me.next()
-				return me.AST.breakStatement()
-			else if ("debugger" == value) then
-				base = me.AST.featureDebuggerExpression(me.token.line)
-				me.next()
-				return base
-			else if ("import_" + "code" == value) then
-				me.next()
-				return me.parseNativeImportCodeStatement()
-			end if
-		else if ("eol" == me.token.type or "cmt" == me.token.type or "nol" == me.token.type) then
-			me.next()
-			return null
-		end if
-
-		return me.parseAssignmentOrCallStatement(flowContext)
-	end function
-
-	Parser.parseBlockShortcut = function(flowContext)
-		debug("parser.parseBlockShortcut")
-		me = self
-		block = []
-		statement = null
-		value = null
-
-		flowContext.push(block)
-		while (true)
-			value = me.token.value
-			if ("eol" == me.token.type or me.breakingSortcut.indexOf(value) != null) then
-				break
-			end if
-			statement = me.parseStatement(flowContext, "return" == value)
-			if (statement) then
-				block.push(statement)
-			end if
-			if ("eol" == me.token.type) then
-				break
-			end if
-			me.consume(";")
-		end while
-		flowContext.pop()
-
-		return block
-	end function
-
-	Parser.parseBlock = function(flowContext) 
-		debug("parser.parseBlock")
-		me = self
-		block = []
-		statement = null
-		value = null
-
-		flowContext.push(block)
-		while (not me.isBlockFollow(me.token))
-			value = me.token.value
-			statement = me.parseStatement(flowContext)
-
-			if (me.hasError()) then
-				return null
-			end if
-
-			me.consume(";")
-			if (statement) then block.push(statement)
-		end while
-		flowContext.pop()
-
-		return block
-	end function
-
-	Parser.parseChunk = function()
-		debug("parser.parseChunk")
-		me = self
-		me.next()
-		mainStatementLine = me.token.line
-		body = me.parseBlock([])
-
-		me.status.errors = me.lexer.getErrors() + me.status.errors
-
-		if ("eof" != me.token.type) then
-			me.exception("Expected EOF", me.token.line)
-			return null
-		end if
-
-		return me.AST.chunk(body)
-	end function
-
-	Parser.hasError = function() 
-		return self.status.errors.len > 0
-	end function
-
-	Parser.getErrors = function()
-		return self.status.errors
-	end function
-
-	Parser.exception = function(message, line) 
-		me = self
-		tokenValue = me.token.value
-		errMessage = "[Parser] Error: " + message + " with token " + tokenValue + " ("  + tokenValue.code + ") at line " + line
-		debug(errMessage)
-		me.status.errors.push("[Parser] Error: " + message + " with token " + tokenValue + " ("  + tokenValue.code + ") at line " + line)
-		return null
-	end function
-
-	return Parser
+	me.exception("Unexpected arguments", mainStatementLine)
+	return null
 end function
 
-injector.def("parser", ["lexer"], @parserModule)
+Parser.parseFloatExpression = function(baseValue)
+	debug("parser.parseFloatExpression")
+	if (baseValue == 0) then baseValue = ""
+	me = self
+	mainStatementLine = me.token.line
+	me.next()
+	floatValue = [baseValue, me.token.value].join(".")
+	me.next()
+	base = me.AST.literal("num", floatValue, floatValue, mainStatementLine)
+	return base
+end function
+
+Parser.parsePrimaryExpression = function(flowContext)
+	debug("parser.parsePrimaryExpression")
+	me = self
+	mainStatementLine = me.token.line
+	value = me.token.value
+	type = me.token.type
+
+	if (me.literals.indexOf(type) != null) then
+		rangeStart = me.token.range[0]
+		rangeEnd = me.token.range[1]
+		raw = me.content[rangeStart:rangeEnd]
+		base = me.AST.literal(type, value, raw, mainStatementLine)
+
+		if ("nil" != type and me.prefetch(1).value == ".") then
+			me.next()
+			if ("num" == type and "num" == me.prefetch(1).type) then
+				base = me.parseFloatExpression(value)
+			else
+				base = me.parseRighthandExpressionGreedy(base, flowContext)
+			end if
+		else
+			me.next()
+		end if
+
+		return base
+	else if ("." == value and "num" == me.prefetch(1).type) then
+		return me.parseFloatExpression(0)
+	else if ("kwd" == type and "function" == value) then
+		me.next()
+		return me.parseFunctionDeclaration(flowContext)
+	else if (me.consumeMany(["{", "["])) then
+		base = null
+		if ("{" == value) then
+			base = me.parseMapConstructor(flowContext)
+		else
+			base = me.parseListConstructor(flowContext)
+		end if
+
+		base = me.parseRighthandExpressionGreedy(base, flowContext)
+
+		return base
+	end if
+
+	return null
+end function
+
+Parser.parseSubExpression = function (flowContext, minPrecedence)
+	debug("parser.parseSubExpression")
+	if (minPrecedence == null) then minPrecedence = 0
+	me = self
+	mainStatementLine = me.token.line
+	operator = me.token.value
+	expression = null
+
+	if (me.isUnary(me.token)) then
+		me.next()
+		argument = me.parsePrimaryExpression(flowContext)
+		if (null == argument) then
+			argument = me.parseRighthandExpression(flowContext)
+		end if
+		expression = me.AST.unaryExpression(operator, argument, mainStatementLine)
+	else if ("kwd" == me.token.type and me.token.value == "not") then
+		me.next()
+		argument = me.parseSubExpression(flowContext, 10)
+		expression = me.AST.negationExpression(argument, mainStatementLine)
+	end if
+	if (null == expression) then
+		expression = me.parsePrimaryExpression(flowContext)
+
+		if (null == expression) then
+			expression = me.parseRighthandExpression(flowContext)
+		end if
+	end if
+
+	precedence = null
+
+	while (true)
+		operator = me.token.value
+
+		if (me.precedence.hasIndex(operator)) then
+			precedence = me.precedence[operator]
+		else
+			precedence = 0
+		end if
+
+		if (precedence == 0 or precedence <= minPrecedence) then break
+		if ("^" == operator) then precedence = precedence - 1
+		me.next()
+
+		right = me.parseSubExpression(flowContext, precedence)
+
+		if (null == right) then
+			right = me.AST.emptyExpression(mainStatementLine)
+		end if
+
+		if (expression == null and (operator == "-" or operator == "+")) then
+			expression = me.AST.binaryNegatedExpression(operator, right, mainStatementLine)
+		else if (right.type == "EmptyExpression" and (me.token.value == "-" or me.token.value == "+")) then
+			negationOperator = me.token.value
+			me.next()
+			arg = me.parseSubExpression(flowContext, precedence)
+			negationExpression = me.AST.binaryNegatedExpression(negationOperator, arg, mainStatementLine)
+
+			expression = me.AST.binaryExpression(operator, expression, negationExpression, mainStatementLine)
+		else
+			expression = me.AST.binaryExpression(operator, expression, right, mainStatementLine)
+		end if
+	end while
+
+	return expression
+end function
+
+Parser.parseNativeImportCodeStatement = function()
+	me = self
+	mainStatementLine = me.token.line
+	filepath = null
+
+	me.expect("(")
+
+	if ("str" == me.token.type) then
+		filepath = me.parsePrimaryExpression()
+	else
+		me.exception("Unexpected non literal value in import_code")
+		return null
+	end if
+
+	me.expect(")")
+	me.expect(";")
+
+	return me.AST.importCodeExpression(filepath, mainStatementLine)
+end function
+
+Parser.parseWhileStatement = function(flowContext)
+	debug("parser.parseWhileStatement")
+	me = self
+	mainStatementLine = me.token.line
+	condition = me.parseExpectedExpression(flowContext)
+
+	body = null
+	if ("eol" == me.token.type) then
+		body = me.parseBlock(flowContext)
+		me.expect("end while")
+	else
+		body = me.parseBlockShortcut(flowContext)
+		me.expectMany(["end while", ";", "<eof>"])
+	end if
+
+	return me.AST.whileStatement(condition, body, mainStatementLine)
+end function
+
+Parser.parseExpression = function(flowContext)
+	debug("parser.parseExpression")
+	me = self
+	expression = me.parseSubExpression(flowContext)
+	return expression
+end function
+
+Parser.parseExpectedExpression = function(flowContext)
+	debug("parser.parseExpectedExpression")
+	me = self
+	expression = me.parseExpression(flowContext)
+	if (expression != null) then return expression
+	me.exception("Unexpected expression", me.token.line)
+	return null
+end function
+
+Parser.parseIfShortcutStatement = function(flowContext, condition)
+	me = self
+	clauses = []
+	mainStatementLine = me.token.line
+	statementLine = mainStatementLine
+	body = []
+
+	body = me.parseBlockShortcut(flowContext)
+
+	clauses.push(me.AST.ifClause(condition, body, statementLine))
+
+	while (me.consume("else if"))
+		statementLine = me.token.line
+		condition = me.parseExpectedExpression(flowContext)
+		me.expect("then")
+		body = me.parseBlockShortcut(flowContext)
+
+		clauses.push(me.AST.elseifClause(condition, body, statementLine))
+	end while
+
+	if (me.consume("else")) then
+		statementLine = me.token.line
+		body = me.parseBlockShortcut(flowContext)
+
+		clauses.push(me.AST.elseClause(body, statementLine))
+	end if
+
+	me.consumeMany(["end if", ";", "<eof>"])
+
+	return me.AST.ifStatement(clauses, mainStatementLine)
+end function
+
+Parser.parseIfStatement = function(flowContext)
+	debug("parser.parseIfStatement")
+	me = self
+	clauses = []
+	mainStatementLine = me.token.line
+	statementLine = mainStatementLine
+	condition = null
+	body = null
+
+	condition = me.parseExpectedExpression(flowContext)
+	me.expect("then")
+
+	if ("eol" != me.token.type) then
+		return me.parseIfShortcutStatement(flowContext, condition)
+	end if
+
+	body = me.parseBlock(flowContext)
+	clauses.push(me.AST.ifClause(condition, body, statementLine))
+
+	while (me.consume("else if"))
+		statementLine = mainStatementLine
+		condition = me.parseExpectedExpression(flowContext)
+		me.expect("then")
+		body = me.parseBlock(flowContext)
+		clauses.push(me.AST.elseifClause(condition, body, statementLine))
+	end while
+
+	if (me.consume("else")) then
+		statementLine = mainStatementLine
+		body = me.parseBlock(flowContext)
+		clauses.push(me.AST.elseClause(body, statementLine))
+	end if
+
+	me.expect("end if")
+
+	return me.AST.ifStatement(clauses, mainStatementLine)
+end function
+
+Parser.parseReturnStatement = function(flowContext, isShortcutStatement)
+	me = self
+	mainStatementLine = me.token.line
+	expressions = []
+
+	if ("end" != me.token.value) then
+		expression = me.parseExpression(flowContext)
+
+		if (null != expression) then
+			expressions.push(expression)
+		end if
+
+		while (me.consume(","))
+			expression = me.parseExpectedExpression(flowContext)
+			expressions.push(expression)
+		end while
+
+		if (not isShortcutStatement) then
+			me.consume(";")
+		end if
+	end if
+
+	return me.AST.returnStatement(expressions, mainStatementLine)
+end function
+
+Parser.parseAssignmentOrCallStatement = function(flowContext)
+	debug("parser.parseAssignmentOrCallStatement")
+	me = self
+
+	if (me.hasError()) then
+		return null
+	end if
+
+	mainStatementLine = me.token.line
+	base = null
+	last = {"range":[-1, -1],"type":"unknown"}
+
+	if ("idtf" == me.token.type) then
+		base = me.parseIdentifier()
+	else if ("(" == me.token.value) then
+		me.next()
+		base = me.parseExpectedExpression(flowContext)
+		me.expect(")")
+	else if (me.nonNilLiterals.indexOf(me.token.type) != null) then
+		base = me.parseExpectedExpression(flowContext)
+	else if ("[" == me.token.value or "{" == me.token.value) then
+		base = me.parseExpectedExpression(flowContext)
+	else
+		me.exception("Unexpected assignment or call", mainStatementLine)
+		return null
+	end if
+
+	while ("punc" == me.token.type and "=" != me.token.value and ";" != me.token.value and "<eof>" != me.token.value)
+		if (last != null and me.token.range[0] == last.range[0] and me.token.range[1] == last.range[1]) then
+			me.exception("Unexpected punctuator", me.token.line)
+			return null
+		end if
+
+		last = me.token
+		base = me.parseRighthandExpressionGreedy(base, flowContext)
+	end while
+
+	if (";" == me.token.value or "<eof>" == me.token.value) then
+		if (me.literals.indexOf(last.type) != null) then
+			return base
+		end if
+
+		return me.AST.callStatement(base, mainStatementLine)
+	end if
+
+	me.expect("=")
+
+	value = me.parseExpectedExpression(flowContext)
+
+	return me.AST.assignmentStatement(base, value, mainStatementLine)
+end function
+
+Parser.parseForStatement = function(flowContext)
+	debug("parser.parseForStatement")
+	me = self
+	mainStatementLine = me.token.line
+	me.consume("(")
+	variable = me.parseIdentifier()
+
+	me.expect("in")
+	iterator = me.parseExpectedExpression(flowContext)
+	me.consume(")")
+
+	body = null
+	if ("eol" == me.token.type) then
+		body = me.parseBlock(flowContext)
+		me.expect("end for")
+	else
+		body = me.parseBlockShortcut(flowContext)
+		me.expectMany(["end for", ";", "<eof>"])
+	end if
+
+	return me.AST.forGenericStatement(variable, iterator, body, mainStatementLine)
+end function
+
+Parser.parseFunctionDeclaration = function(flowContext)
+	me = self
+	mainStatementLine = me.token.line
+	parameters = []
+	me.expect("(")
+
+	if (not me.consume(")")) then
+		while (true)
+			if ("idtf" == me.token.type) then
+				parameter = me.parseIdentifier()
+				defaultValue = null
+				if (me.consume("=")) then
+					defaultValue = me.parseExpectedExpression(flowContext)
+				end if
+				parameters.push({"path":parameter, "defaultValue": defaultValue})
+				if (me.consume(",")) then
+					continue
+				end if
+			else
+				me.exception("Unexpected parameter")
+			end if
+
+			me.expect(")")
+			break
+		end while
+	end if
+
+	body = null
+	if ("eol" == me.token.type) then
+		body = me.parseBlock(flowContext)
+		me.expect("end function")
+	else
+		body = me.parseBlockShortcut(flowContext)
+		me.expectMany(["end function", ";", "<eof>"])
+	end if
+
+	return me.AST.functionStatement("anon", parameters, body, mainStatementLine)
+end function
+
+Parser.parseStatement = function(flowContext, isShortcutStatement)
+	debug("parser.parseStatement")
+	me = self
+
+	if (me.hasError()) then
+		return null
+	end if
+
+	if ("kwd" == me.token.type) then
+		value = me.token.value
+
+		if ("if" == value) then
+			me.next()
+			return me.parseIfStatement(flowContext)
+		else if ("return" == value) then
+			me.next()
+			return me.parseReturnStatement(flowContext, isShortcutStatement)
+		else if ("function" == value) then
+			me.next()
+			return me.parseFunctionDeclaration(flowContext)
+		else if ("while" == value) then
+			me.next()
+			return me.parseWhileStatement(flowContext)
+		else if ("for" == value) then
+			me.next()
+			return me.parseForStatement(flowContext)
+		else if ("continue" == value) then
+			me.next()
+			return me.AST.continueStatement()
+		else if ("break" == value) then
+			me.next()
+			return me.AST.breakStatement()
+		else if ("break" == value) then
+			me.next()
+			return me.AST.breakStatement()
+		else if ("debugger" == value) then
+			base = me.AST.featureDebuggerExpression(me.token.line)
+			me.next()
+			return base
+		else if ("import_" + "code" == value) then
+			me.next()
+			return me.parseNativeImportCodeStatement()
+		end if
+	else if ("eol" == me.token.type or "cmt" == me.token.type or "nol" == me.token.type) then
+		me.next()
+		return null
+	end if
+
+	return me.parseAssignmentOrCallStatement(flowContext)
+end function
+
+Parser.parseBlockShortcut = function(flowContext)
+	debug("parser.parseBlockShortcut")
+	me = self
+	block = []
+	statement = null
+	value = null
+
+	flowContext.push(block)
+	while (true)
+		value = me.token.value
+		if ("eol" == me.token.type or me.breakingSortcut.indexOf(value) != null) then
+			break
+		end if
+		statement = me.parseStatement(flowContext, "return" == value)
+		if (statement) then
+			block.push(statement)
+		end if
+		if ("eol" == me.token.type) then
+			break
+		end if
+		me.consume(";")
+	end while
+	flowContext.pop()
+
+	return block
+end function
+
+Parser.parseBlock = function(flowContext) 
+	debug("parser.parseBlock")
+	me = self
+	block = []
+	statement = null
+	value = null
+
+	flowContext.push(block)
+	while (not me.isBlockFollow(me.token))
+		value = me.token.value
+		statement = me.parseStatement(flowContext)
+
+		if (me.hasError()) then
+			return null
+		end if
+
+		me.consume(";")
+		if (statement) then block.push(statement)
+	end while
+	flowContext.pop()
+
+	return block
+end function
+
+Parser.parseChunk = function()
+	debug("parser.parseChunk")
+	me = self
+	me.next()
+	mainStatementLine = me.token.line
+	body = me.parseBlock([])
+
+	me.status.errors = me.lexer.getErrors() + me.status.errors
+
+	if ("eof" != me.token.type) then
+		me.exception("Expected EOF", me.token.line)
+		return null
+	end if
+
+	return me.AST.chunk(body)
+end function
+
+Parser.hasError = function() 
+	return self.status.errors.len > 0
+end function
+
+Parser.getErrors = function()
+	return self.status.errors
+end function
+
+Parser.exception = function(message, line) 
+	me = self
+	tokenValue = me.token.value
+	errMessage = "[Parser] Error: " + message + " with token " + tokenValue + " ("  + tokenValue.code + ") at line " + line
+	debug(errMessage)
+	me.status.errors.push("[Parser] Error: " + message + " with token " + tokenValue + " ("  + tokenValue.code + ") at line " + line)
+	return null
+end function

@@ -1,226 +1,131 @@
-basicEditorModule = function(deps)
-	State = deps.state
-	enrichedUserInput = deps.enrichedUserInput
-	VimLexer = deps.vimLexer
+import_code("./state.src")
+import_code("./enrichedUserInput.src")
+import_code("./vimLexer.src")
 
-	BasicEditor = {}
+BasicEditor = {}
 
-	BasicEditor.name = "Default Editor"
-	BasicEditor.description = "Simple file editor with no special visualisation."
-	BasicEditor.State = State
-	BasicEditor.VimLexer = VimLexer
-	BasicEditor.enrichedUserInput = enrichedUserInput
-	BasicEditor.constructor = function(file, shell, config)
-		me = self
+BasicEditor.name = "Default Editor"
+BasicEditor.description = "Simple file editor with no special visualisation."
+BasicEditor.State = State
+BasicEditor.VimLexer = VimLexer
+BasicEditor.enrichedUserInput = UserInput
+BasicEditor.constructor = function(file, shell, config)
+	me = self
 
-		me.shell = shell
-		me.computer = shell.host_computer
+	me.shell = shell
+	me.computer = shell.host_computer
 
-		parsedFile = me.parseFile(file)
+	parsedFile = me.parseFile(file)
 
-		if (typeof(parsedFile) == "string") then
-			exit("Error: " + parsedFile)
-		end if
+	if (typeof(parsedFile) == "string") then
+		exit("Error: " + parsedFile)
+	end if
 
-		me.state = (new State).constructor()
+	me.state = (new State).constructor()
 
-		me.state.setItem("instance", me)
-		me.state.setItem("mode", me.getModes().visual)
-		me.state.setItem("cursor-line", 0)
-		me.state.setItem("cursor-offset", [0, 0])
+	me.state.setItem("instance", me)
+	me.state.setItem("mode", me.getModes().visual)
+	me.state.setItem("cursor-line", 0)
+	me.state.setItem("cursor-offset", [0, 0])
 
-		me.file = parsedFile
-		me.lines = parsedFile.get_content.split(char(10))
-		me.insertLines = [""]
-		me.insertOverride = false
-		me.insertTextRight = ""
-		me.config = config
-		me.gracefulShutdown = false
-		me.lastSearchResults = []
-		me.selectedSearchResult = null
-		me.saved = true
-		me.lineNumberDelimiterChar = char(124)
-		//nightly seems really buggy, because of that this char is used for now
-		me.cursorChar = "$"
-		me.lastInsertOutput = ""
+	me.file = parsedFile
+	me.lines = parsedFile.get_content.split(char(10))
+	me.insertLines = [""]
+	me.insertOverride = false
+	me.insertTextRight = ""
+	me.config = config
+	me.gracefulShutdown = false
+	me.lastSearchResults = []
+	me.selectedSearchResult = null
+	me.saved = true
+	me.lineNumberDelimiterChar = char(124)
+	//nightly seems really buggy, because of that this char is used for now
+	me.cursorChar = "$"
+	me.lastInsertOutput = ""
 
-		config.setDefault({
-			"line-position-color": "yellow",
-			"cursor-position-color": "#ffff00aa",
-			"actions-display-mode": "all",
-			"find-visible-lines": "4",
-			"visible-lines": "20"
-		})
+	config.setDefault({
+		"line-position-color": "yellow",
+		"cursor-position-color": "#ffff00aa",
+		"actions-display-mode": "all",
+		"find-visible-lines": "4",
+		"visible-lines": "20"
+	})
 
-		me.state.events.on("interact", @me.onInteract)
+	me.state.events.on("interact", @me.onInteract)
 
-		return me 
-	end function
+	return me 
+end function
 
-	BasicEditor.supports = function(file)
-		return true
-	end function
+BasicEditor.supports = function(file)
+	return true
+end function
 
-	BasicEditor.getModes = function()
-		return {
-			"visual": 1,
-			"insert": 2
-		}
-	end function
+BasicEditor.getModes = function()
+	return {
+		"visual": 1,
+		"insert": 2
+	}
+end function
 
-	BasicEditor.getMainCmds = function()
-		return {
-			":sav": "saveAs",
-			":saveas": "saveAs",
-			":h": "help",
-			":help": "help",
-			":q": "close",
-			":w": "save",
-			":wq": "saveQuit",
-			":x": "saveQuit",
-			":set": "setOptions"
-		}
-	end function
+BasicEditor.getMainCmds = function()
+	return {
+		":sav": "saveAs",
+		":saveas": "saveAs",
+		":h": "help",
+		":help": "help",
+		":q": "close",
+		":w": "save",
+		":wq": "saveQuit",
+		":x": "saveQuit",
+		":set": "setOptions"
+	}
+end function
 
-	BasicEditor.getCustomMainCmds = function()
-		return {}
-	end function
+BasicEditor.getCustomMainCmds = function()
+	return {}
+end function
 
-	BasicEditor.getDisplayCmds = function()
-		return {
-			"h": "moveLeft",
-			"j": "moveDown",
-			"k": "moveUp",
-			"l": "moveRight",
-			"o": "appendAbove",
-			"O": "appendBelow",
-			"d": "deleteMarkedText",
-			"dd": "deleteLine",
-			"i": "insert",
-			"I": "insertAtBeginning",
-			"f": "find",
-			"g": "gotoLine",
-			"G": "gotoOffset",
-			"fx": "findAndJumpNext",
-			"tx": "findNextResult",
-			"Fx": "findAndJumpPrevious",
-			"Tx": "findPreviousResult"
-		}
-	end function
+BasicEditor.getDisplayCmds = function()
+	return {
+		"h": "moveLeft",
+		"j": "moveDown",
+		"k": "moveUp",
+		"l": "moveRight",
+		"o": "appendAbove",
+		"O": "appendBelow",
+		"d": "deleteMarkedText",
+		"dd": "deleteLine",
+		"i": "insert",
+		"I": "insertAtBeginning",
+		"f": "find",
+		"g": "gotoLine",
+		"G": "gotoOffset",
+		"fx": "findAndJumpNext",
+		"tx": "findNextResult",
+		"Fx": "findAndJumpPrevious",
+		"Tx": "findPreviousResult"
+	}
+end function
 
-	BasicEditor.getInteractCmds = function()
-		return {
-			":t": "indent"
-		}
-	end function
+BasicEditor.getInteractCmds = function()
+	return {
+		":t": "indent"
+	}
+end function
 
-	BasicEditor.parseFile = function(file)
-		me = self
-		computer = me.computer
-		currentUser = active_user
-		fileType = typeof(file)
+BasicEditor.parseFile = function(file)
+	me = self
+	computer = me.computer
+	currentUser = active_user
+	fileType = typeof(file)
 
-		if (fileType == "string") then
-			fileHandle = computer.File(file)
+	if (fileType == "string") then
+		fileHandle = computer.File(file)
 
-			if (not fileHandle) then
-				if (me.enrichedUserInput.confirm("This file does not exist. Do you want to create it.")) then
-					dir = parent_path(file)
-					filename = file.split("/").pop()
-
-					if (filename == "") then
-						return "Empty file name"
-					end if
-
-					result = computer.touch(dir, filename)
-
-					if (typeof(result) == "string") then
-						if (currentUser != "root") then
-							password = me.enrichedUserInput.prompt("Root password:", true)
-							rootShell = get_shell("root", password)
-
-							if (rootShell == null) then
-								return "Invalid root password"
-							end if
-
-							currentUser = "root"
-							computer = rootShell.host_computer
-							result = computer.touch(dir, filename)
-
-							if (typeof(result) == "string") then
-								return result
-							end if
-						else
-							return result
-						end if
-					end if
-
-					fileHandle = computer.File(file)
-
-					if (fileHandle == null) then
-						return "Cannot find file"
-					end if
-
-					if (currentUser == "root") then
-						fileHandle.chmod("u-wrx")
-						fileHandle.chmod("g-wrx")
-						fileHandle.chmod("o-wrx")
-					end if
-				end if
-			end if
-
-			return me.parseFile(fileHandle)
-		else if (fileType == "file") then
-			if (file.is_binary) then
-				return "File is a binary"
-			end if
-
-			if (file.is_folder) then
-				return "A folder is not a file"
-			end if
-
-			if (not file.has_permission("r")) then
-				return "No read access"
-			end if
-
-			if (not file.has_permission("w")) then
-				return "No write access"
-			end if
-
-			return file
-		end if
-
-		return "Invalid file value: " + fileType
-	end function
-
-	BasicEditor.saveFileAs = function(filepath, content)
-		me = self
-		computer = me.computer
-		currentUser = active_user
-		filepathType = typeof(filepath)
-
-		if (filepathType == "string") then
-			fileHandle = computer.File(filepath)
-
-			if (fileHandle) then
-				if (not me.enrichedUserInput.confirm("This file does already exist. Do you want to override it?")) then
-					return "File already exists"
-				end if
-
-				if (fileHandle.is_binary) then
-					return "File is a binary"
-				end if
-
-				if (fileHandle.is_folder) then
-					return "A folder is not a file"
-				end if
-
-				if (not fileHandle.has_permission("w")) then
-					return "Cannot write file"
-				end if
-			else
-				dir = parent_path(filepath)
-				filename = filepath.split("/").pop()
+		if (not fileHandle) then
+			if (me.enrichedUserInput.confirm("This file does not exist. Do you want to create it.")) then
+				dir = parent_path(file)
+				filename = file.split("/").pop()
 
 				if (filename == "") then
 					return "Empty file name"
@@ -249,7 +154,7 @@ basicEditorModule = function(deps)
 					end if
 				end if
 
-				fileHandle = computer.File(filepath)
+				fileHandle = computer.File(file)
 
 				if (fileHandle == null) then
 					return "Cannot find file"
@@ -261,903 +166,992 @@ basicEditorModule = function(deps)
 					fileHandle.chmod("o-wrx")
 				end if
 			end if
-
-			fileHandle.set_content(content)
-
-			return fileHandle
 		end if
 
-		return "Invalid filepath value"
-	end function
-
-	BasicEditor.saveAs = function()
-		me = self
-
-		filepath = me.enrichedUserInput.prompt("Enter path:")
-		result = me.saveFileAs(filepath, me.lines.join(char(10)))
-
-		if (typeof(result) == "file") then
-			print("Saved as " + result.path + "...")
-			me.file = result
-		else
-			me.exception("Cannot save file: " + result)
-		end if
-	end function
-
-	BasicEditor.save = function()
-		me = self
-		print("Saving file ...")
-		me.file.set_content(me.lines.join(char(10)))
-		me.saved = true
-	end function
-
-	BasicEditor.saveQuit = function()
-		me = self
-		me.save()
-		me.close()
-	end function
-
-	BasicEditor.close = function()
-		me = self
-		modes = me.getModes()
-		currentMode = me.state.getItem("mode")
-
-		if (currentMode == modes.insert) then
-			me.exitInsert()
-		else if (me.saved or me.enrichedUserInput.confirm("You didn't save. Are you sure you want to exit?")) then
-			print("Bye bye :)")
-			me.gracefulShutdown = true
-		else
-			me.exception("Cannot exit editor. File is not saved.")
-		end if
-	end function
-
-	BasicEditor.setOptions = function()
-		me = self
-
-		me.clearScreen()
-		print("<b><u>Options</u></b>")
-
-		for item in me.config.data
-			print(char(9) + "<b>" + item.key + "</b>" + "=<i>" + item.value + "</i>")
-		end for
-
-		response = EnrichedUserInput.prompt(char(10) + "Set option (Example: visible-lines 10):" + char(10) + "> ")
-
-		if (me.config.data.hasIndex(response.cmd)) then
-			me.config.write(response.cmd, response.args.trim, true)
-		else
-			me.exception("<color=red>Invalid option</color>")
+		return me.parseFile(fileHandle)
+	else if (fileType == "file") then
+		if (file.is_binary) then
+			return "File is a binary"
 		end if
 
-		if (EnrichedUserInput.confirm("Do you want to set another option?")) then
-			me.setOptions()
+		if (file.is_folder) then
+			return "A folder is not a file"
 		end if
-	end function
 
-	BasicEditor.getIndent = function(line)
-		currentIndent = 0
-		
-		for lineChar in line
-			if (lineChar.code == 9) then
-				currentIndent = currentIndent + 1
-			else
-				break
+		if (not file.has_permission("r")) then
+			return "No read access"
+		end if
+
+		if (not file.has_permission("w")) then
+			return "No write access"
+		end if
+
+		return file
+	end if
+
+	return "Invalid file value: " + fileType
+end function
+
+BasicEditor.saveFileAs = function(filepath, content)
+	me = self
+	computer = me.computer
+	currentUser = active_user
+	filepathType = typeof(filepath)
+
+	if (filepathType == "string") then
+		fileHandle = computer.File(filepath)
+
+		if (fileHandle) then
+			if (not me.enrichedUserInput.confirm("This file does already exist. Do you want to override it?")) then
+				return "File already exists"
 			end if
-		end for
 
-		return currentIndent
-	end function
+			if (fileHandle.is_binary) then
+				return "File is a binary"
+			end if
 
-	BasicEditor.getLines = function(startLine, endLine)
-		me = self
-		linesLength = me.lines.len
+			if (fileHandle.is_folder) then
+				return "A folder is not a file"
+			end if
 
-		if (startLine < 0) then
-			startLine = 0
+			if (not fileHandle.has_permission("w")) then
+				return "Cannot write file"
+			end if
+		else
+			dir = parent_path(filepath)
+			filename = filepath.split("/").pop()
+
+			if (filename == "") then
+				return "Empty file name"
+			end if
+
+			result = computer.touch(dir, filename)
+
+			if (typeof(result) == "string") then
+				if (currentUser != "root") then
+					password = me.enrichedUserInput.prompt("Root password:", true)
+					rootShell = get_shell("root", password)
+
+					if (rootShell == null) then
+						return "Invalid root password"
+					end if
+
+					currentUser = "root"
+					computer = rootShell.host_computer
+					result = computer.touch(dir, filename)
+
+					if (typeof(result) == "string") then
+						return result
+					end if
+				else
+					return result
+				end if
+			end if
+
+			fileHandle = computer.File(filepath)
+
+			if (fileHandle == null) then
+				return "Cannot find file"
+			end if
+
+			if (currentUser == "root") then
+				fileHandle.chmod("u-wrx")
+				fileHandle.chmod("g-wrx")
+				fileHandle.chmod("o-wrx")
+			end if
 		end if
 
-		if (endLine > linesLength) then
-			endLine = linesLength
+		fileHandle.set_content(content)
+
+		return fileHandle
+	end if
+
+	return "Invalid filepath value"
+end function
+
+BasicEditor.saveAs = function()
+	me = self
+
+	filepath = me.enrichedUserInput.prompt("Enter path:")
+	result = me.saveFileAs(filepath, me.lines.join(char(10)))
+
+	if (typeof(result) == "file") then
+		print("Saved as " + result.path + "...")
+		me.file = result
+	else
+		me.exception("Cannot save file: " + result)
+	end if
+end function
+
+BasicEditor.save = function()
+	me = self
+	print("Saving file ...")
+	me.file.set_content(me.lines.join(char(10)))
+	me.saved = true
+end function
+
+BasicEditor.saveQuit = function()
+	me = self
+	me.save()
+	me.close()
+end function
+
+BasicEditor.close = function()
+	me = self
+	modes = me.getModes()
+	currentMode = me.state.getItem("mode")
+
+	if (currentMode == modes.insert) then
+		me.exitInsert()
+	else if (me.saved or me.enrichedUserInput.confirm("You didn't save. Are you sure you want to exit?")) then
+		print("Bye bye :)")
+		me.gracefulShutdown = true
+	else
+		me.exception("Cannot exit editor. File is not saved.")
+	end if
+end function
+
+BasicEditor.setOptions = function()
+	me = self
+
+	me.clearScreen()
+	print("<b><u>Options</u></b>")
+
+	for item in me.config.data
+		print(char(9) + "<b>" + item.key + "</b>" + "=<i>" + item.value + "</i>")
+	end for
+
+	response = EnrichedUserInput.prompt(char(10) + "Set option (Example: visible-lines 10):" + char(10) + "> ")
+
+	if (me.config.data.hasIndex(response.cmd)) then
+		me.config.write(response.cmd, response.args.trim, true)
+	else
+		me.exception("<color=red>Invalid option</color>")
+	end if
+
+	if (EnrichedUserInput.confirm("Do you want to set another option?")) then
+		me.setOptions()
+	end if
+end function
+
+BasicEditor.getIndent = function(line)
+	currentIndent = 0
+	
+	for lineChar in line
+		if (lineChar.code == 9) then
+			currentIndent = currentIndent + 1
+		else
+			break
 		end if
+	end for
 
-		return me.lines[startLine: endLine]
-	end function
+	return currentIndent
+end function
 
-	BasicEditor.renderFoundLine = function(line, item, numberWidth)
-		me = self
-		index = item.lineNumber
-		visibleLines = me.config.get("find-visible-lines").val
-		visibleLines = visibleLines / 2
-		previousLines = me.getLines(index - visibleLines, index)
-		aheadLines = me.getLines(index + 1, index + visibleLines + 1)
+BasicEditor.getLines = function(startLine, endLine)
+	me = self
+	linesLength = me.lines.len
 
-		tmpIndex = index - visibleLines
+	if (startLine < 0) then
+		startLine = 0
+	end if
 
-		for tmpLine in previousLines
-			output = me.prepareLineNumber(tmpIndex, numberWidth, false)
-			output = output + me.prepareVisualLine(tmpLine, index, false)
+	if (endLine > linesLength) then
+		endLine = linesLength
+	end if
 
-			print(output)
-			tmpIndex = tmpIndex + 1
-		end for
+	return me.lines[startLine: endLine]
+end function
 
-		output = me.prepareLineNumber(index, numberWidth, true)
-		output = output + me.prepareVisualLine(line, index, true, item.offset)
+BasicEditor.renderFoundLine = function(line, item, numberWidth)
+	me = self
+	index = item.lineNumber
+	visibleLines = me.config.get("find-visible-lines").val
+	visibleLines = visibleLines / 2
+	previousLines = me.getLines(index - visibleLines, index)
+	aheadLines = me.getLines(index + 1, index + visibleLines + 1)
+
+	tmpIndex = index - visibleLines
+
+	for tmpLine in previousLines
+		output = me.prepareLineNumber(tmpIndex, numberWidth, false)
+		output = output + me.prepareVisualLine(tmpLine, index, false)
 
 		print(output)
+		tmpIndex = tmpIndex + 1
+	end for
 
-		tmpIndex = index + visibleLines + 1
+	output = me.prepareLineNumber(index, numberWidth, true)
+	output = output + me.prepareVisualLine(line, index, true, item.offset)
 
-		for tmpLine in aheadLines
-			output = me.prepareLineNumber(tmpIndex, numberWidth, false)
-			output = output + me.prepareVisualLine(tmpLine, index, false)
+	print(output)
 
-			print(output)
-			tmpIndex = tmpIndex + 1
-		end for
-	end function
+	tmpIndex = index + visibleLines + 1
 
-	BasicEditor.find = function()
-		me = self
-		startLine = 0
-		endLine = me.lines.len
-		results = []
+	for tmpLine in aheadLines
+		output = me.prepareLineNumber(tmpIndex, numberWidth, false)
+		output = output + me.prepareVisualLine(tmpLine, index, false)
 
-		stringToSearch = me.enrichedUserInput.prompt("What string do you want to search?" + char(10) + "> ")
-		strLength = stringToSearch.raw.len
+		print(output)
+		tmpIndex = tmpIndex + 1
+	end for
+end function
 
-		if (strLength == 0) then
-			return
-		end if
+BasicEditor.find = function()
+	me = self
+	startLine = 0
+	endLine = me.lines.len
+	results = []
 
-		index = startLine
+	stringToSearch = me.enrichedUserInput.prompt("What string do you want to search?" + char(10) + "> ")
+	strLength = stringToSearch.raw.len
 
-		while (index < endLine)
-			debug("render find lines")
+	if (strLength == 0) then
+		return
+	end if
 
-			line = me.lines[index]
-			matchIndex = line.indexOf(stringToSearch.raw)
+	index = startLine
 
-			while (matchIndex != null)
-				results.push({
-					"lineNumber": index,
-					"offset": [matchIndex, matchIndex + strLength]
-				})
-				matchIndex = line.indexOf(stringToSearch.raw, matchIndex + 1)
-			end while
+	while (index < endLine)
+		debug("render find lines")
 
-			index = index + 1
+		line = me.lines[index]
+		matchIndex = line.indexOf(stringToSearch.raw)
+
+		while (matchIndex != null)
+			results.push({
+				"lineNumber": index,
+				"offset": [matchIndex, matchIndex + strLength]
+			})
+			matchIndex = line.indexOf(stringToSearch.raw, matchIndex + 1)
 		end while
 
-		me.lastSearchResults = results
+		index = index + 1
+	end while
 
-		return results
-	end function
+	me.lastSearchResults = results
 
-	BasicEditor.selectNextFindResult = function()
-		me = self
-		item = me.lastSearchResults.pull()
-		previousItem = me.selectedSearchResult
+	return results
+end function
 
-		if (item == null) then
-			return
+BasicEditor.selectNextFindResult = function()
+	me = self
+	item = me.lastSearchResults.pull()
+	previousItem = me.selectedSearchResult
+
+	if (item == null) then
+		return
+	end if
+
+	me.selectedSearchResult = item
+
+	if (previousItem != null) then
+		me.lastSearchResults.push(previousItem)
+	end if
+
+	me.setPosition(item.lineNumber, item.offset)
+end function
+
+BasicEditor.selectPreviousFindResult = function()
+	me = self
+	item = me.lastSearchResults.pop()
+	previousItem = me.selectedSearchResult
+
+	if (item == null) then
+		return
+	end if
+
+	me.selectedSearchResult = item
+
+	if (previousItem != null) then
+		me.lastSearchResults = [previousItem] + me.lastSearchResults
+	end if
+
+	me.setPosition(item.lineNumber, item.offset)
+end function
+
+BasicEditor.findAndShowLines = function()
+	me = self
+	numberWidth = str(me.lines.len + 1).len
+	results = me.find()
+
+	for item in results
+		debug("render find lines")
+
+		line = me.lines[item.lineNumber]
+
+		print("=" * 60)
+		me.renderFoundLine(line, item, numberWidth)
+	end for
+
+	print("Found results: " + results.len)
+
+	me.enrichedUserInput.prompt("Press any key to continue...")
+end function
+
+BasicEditor.onInteract = function(state, stdin)
+	me = state.getItem("instance")
+	currentMode = state.getItem("mode")
+	modes = me.getModes()
+
+	if (currentMode == modes.visual) then
+		me.visualInteract()
+	else if (currentMode == modes.insert) then
+		me.insertInteract()
+	end if
+end function
+
+BasicEditor.parseCmdInput = function(cmdInput)
+	me = self
+	forced = false
+	isMainCmd = false
+	values = []
+	cmd = null
+	lexer = (new me.VimLexer).constructor(cmdInput)
+	token = lexer.next()
+
+	if (lexer.hasError()) then
+		return null
+	end if
+
+	while (token)
+		debug("parse cmd input token")
+
+		if (token.type == "force") then
+			forced = true
+		else if (token.type == "numeric") then
+			values.push(token.value)
+		else if (token.type == "colon") then
+			isMainCmd = true
+		else if (token.type == "identifier") then
+			cmd = token.value
+		else if (token.type == "eof") then
+			break
 		end if
 
-		me.selectedSearchResult = item
-
-		if (previousItem != null) then
-			me.lastSearchResults.push(previousItem)
-		end if
-
-		me.setPosition(item.lineNumber, item.offset)
-	end function
-
-	BasicEditor.selectPreviousFindResult = function()
-		me = self
-		item = me.lastSearchResults.pop()
-		previousItem = me.selectedSearchResult
-
-		if (item == null) then
-			return
-		end if
-
-		me.selectedSearchResult = item
-
-		if (previousItem != null) then
-			me.lastSearchResults = [previousItem] + me.lastSearchResults
-		end if
-
-		me.setPosition(item.lineNumber, item.offset)
-	end function
-
-	BasicEditor.findAndShowLines = function()
-		me = self
-		numberWidth = str(me.lines.len + 1).len
-		results = me.find()
-
-		for item in results
-			debug("render find lines")
-
-			line = me.lines[item.lineNumber]
-
-			print("=" * 60)
-			me.renderFoundLine(line, item, numberWidth)
-		end for
-
-		print("Found results: " + results.len)
-
-		me.enrichedUserInput.prompt("Press any key to continue...")
-	end function
-
-	BasicEditor.onInteract = function(state, stdin)
-		me = state.getItem("instance")
-		currentMode = state.getItem("mode")
-		modes = me.getModes()
-
-		if (currentMode == modes.visual) then
-			me.visualInteract()
-		else if (currentMode == modes.insert) then
-			me.insertInteract()
-		end if
-	end function
-
-	BasicEditor.parseCmdInput = function(cmdInput)
-		me = self
-		forced = false
-		isMainCmd = false
-		values = []
-		cmd = null
-		lexer = (new me.VimLexer).constructor(cmdInput)
 		token = lexer.next()
+	end while
 
-		if (lexer.hasError()) then
-			return null
+	if (isMainCmd) then
+		cmd = ":" + cmd
+	end if
+
+	if (forced) then
+		cmd = "!" + cmd
+	end if
+
+	return {
+		"classID": "vim-cmd",
+		"forced": forced,
+		"isMainCmd": isMainCmd,
+		"values": values,
+		"cmd": cmd
+	}
+end function
+
+BasicEditor.renderActions = function(cmds)
+	me = self
+	actionDisplayMode = me.config.get("actions-display-mode")
+
+	if (actionDisplayMode == "all") then
+		print(char(10) + "<b>Actions:</b> ")
+		for cmdItem in cmds
+			print(char(9) + cmdItem.key + " - " + cmdItem.value)
+		end for
+	else if (actionDisplayMode == "light") then
+		print("Actions: " + cmds.indexes.join(", "))
+	end if 
+end function
+
+BasicEditor.visualInteract = function()
+	me = self
+	cmds = me.getDisplayCmds()
+	mainCmds = me.getMainCmds()
+	customMainCmds = me.getCustomMainCmds()
+
+	me.renderActions(cmds + mainCmds + customMainCmds)
+
+	response = me.enrichedUserInput.prompt(char(10) + "> ")
+	vimCmd = me.parseCmdInput(response.raw)
+
+	if (vimCmd == null or vimCmd.cmd == null) then
+		me.exception("invalid command")
+	else if (vimCmd.isMainCmd and customMainCmds.hasIndex(vimCmd.cmd)) then
+		me.mainCustomInteractEval(customMainCmds[vimCmd.cmd], vimCmd.values)
+	else if (vimCmd.isMainCmd and mainCmds.hasIndex(vimCmd.cmd)) then
+		me.mainInteractEval(mainCmds[vimCmd.cmd], vimCmd.values)
+	else if (cmds.hasIndex(vimCmd.cmd)) then
+		me.visualInteractEval(cmds[vimCmd.cmd], vimCmd.values)
+	else
+		me.exception("Unknown command")
+	end if
+
+	me.render()
+	me.state.set("interact")
+end function
+
+BasicEditor.visualInteractEval = function(command, values)
+	me = self
+	cursorLine = me.state.getItem("cursor-line")
+	cursorOffset = me.state.getItem("cursor-offset")
+
+	if (command == "moveLeft") then
+		position = values.pull()
+		if (position == null) then position = 1;
+
+		me.setPosition(cursorLine, cursorOffset[0] + (position * -1))
+	else if (command == "moveRight") then
+		position = values.pull()
+		if (position == null) then position = 1;
+
+		me.setPosition(cursorLine, cursorOffset[0] + position)
+	else if (command == "moveUp") then
+		position = values.pull()
+		if (position == null) then position = 1;
+
+		me.setPosition(cursorLine + (position * -1), cursorOffset)
+	else if (command == "moveDown") then
+		position = values.pull()
+		if (position == null) then position = 1;
+
+		me.setPosition(cursorLine + position, cursorOffset)
+	else if (command == "gotoLine") then
+		position = values.pull()
+		if (position == null) then position = 0 else position = position - 1;
+		me.setPosition(position, cursorOffset)
+	else if (command == "gotoOffset") then
+		if (values.len == 2) then
+			position = values[0]
+			positionRight = values[1]
+			me.setPosition(cursorLine, [position, positionRight])
+		else
+			position = values.pull()
+			if (position == null) then position = 0;
+			me.setPosition(cursorLine, position)
 		end if
+	else if (command == "appendAbove") then
+		me.enterInsert()
+	else if (command == "appendBelow") then
+		me.setPosition(cursorLine + 1, cursorOffset, true)
+		me.enterInsert()
+	else if (command == "insert") then
+		me.enterInsert(true)
+	else if (command == "insertAtBeginning") then
+		me.setPosition(cursorLine, [0, me.lines[cursorLine].len])
+		me.enterInsert(true)
+	else if (command == "deleteLine") then
+		me.deleteLine()
+	else if (command == "deleteMarkedText") then
+		me.deleteMarkedText()
+	else if (command == "find") then
+		me.findAndShowLines()
+	else if (command == "findAndJumpNext") then
+		me.find()
+		me.selectNextFindResult()
+	else if (command == "findNextResult") then
+		me.selectNextFindResult()
+	else if (command == "findAndJumpPrevious") then
+		me.find()
+		me.selectPreviousFindResult()
+	else if (command == "findPreviousResult") then
+		me.selectPreviousFindResult()
+	else
+		me.exception("<color=red>Command is not yet implemented</color>")
+	end if
+end function
 
-		while (token)
-			debug("parse cmd input token")
+BasicEditor.insertInteract = function()
+	me = self
+	mainCmds = me.getMainCmds()
+	insertCmds = me.getInteractCmds()
 
-			if (token.type == "force") then
-				forced = true
-			else if (token.type == "numeric") then
-				values.push(token.value)
-			else if (token.type == "colon") then
-				isMainCmd = true
-			else if (token.type == "identifier") then
-				cmd = token.value
-			else if (token.type == "eof") then
-				break
-			end if
+	response = me.enrichedUserInput.prompt(me.lastInsertOutput)
 
-			token = lexer.next()
-		end while
-
-		if (isMainCmd) then
-			cmd = ":" + cmd
-		end if
-
-		if (forced) then
-			cmd = "!" + cmd
-		end if
-
-		return {
-			"classID": "vim-cmd",
-			"forced": forced,
-			"isMainCmd": isMainCmd,
-			"values": values,
-			"cmd": cmd
-		}
-	end function
-
-	BasicEditor.renderActions = function(cmds)
-		me = self
-		actionDisplayMode = me.config.get("actions-display-mode")
-
-		if (actionDisplayMode == "all") then
-			print(char(10) + "<b>Actions:</b> ")
-			for cmdItem in cmds
-				print(char(9) + cmdItem.key + " - " + cmdItem.value)
-			end for
-		else if (actionDisplayMode == "light") then
-			print("Actions: " + cmds.indexes.join(", "))
-		end if 
-	end function
-
-	BasicEditor.visualInteract = function()
-		me = self
-		cmds = me.getDisplayCmds()
-		mainCmds = me.getMainCmds()
-		customMainCmds = me.getCustomMainCmds()
-
-		me.renderActions(cmds + mainCmds + customMainCmds)
-
-		response = me.enrichedUserInput.prompt(char(10) + "> ")
+	if (response.raw.indexOf(":") == 0) then
 		vimCmd = me.parseCmdInput(response.raw)
 
-		if (vimCmd == null or vimCmd.cmd == null) then
+		if (vimCmd == null) then
 			me.exception("invalid command")
-		else if (vimCmd.isMainCmd and customMainCmds.hasIndex(vimCmd.cmd)) then
-			me.mainCustomInteractEval(customMainCmds[vimCmd.cmd], vimCmd.values)
-		else if (vimCmd.isMainCmd and mainCmds.hasIndex(vimCmd.cmd)) then
+		else if (insertCmds.hasIndex(vimCmd.cmd)) then
+			me.insertInteractCommandEval(insertCmds[vimCmd.cmd], vimCmd.values)
+		else if (mainCmds.hasIndex(vimCmd.cmd)) then
 			me.mainInteractEval(mainCmds[vimCmd.cmd], vimCmd.values)
-		else if (cmds.hasIndex(vimCmd.cmd)) then
-			me.visualInteractEval(cmds[vimCmd.cmd], vimCmd.values)
 		else
 			me.exception("Unknown command")
 		end if
+	else
+		me.insertInteractEval(response.raw)
+	end if
 
-		me.render()
-		me.state.set("interact")
-	end function
+	me.render()
+	me.state.set("interact")
+end function
 
-	BasicEditor.visualInteractEval = function(command, values)
-		me = self
-		cursorLine = me.state.getItem("cursor-line")
-		cursorOffset = me.state.getItem("cursor-offset")
+BasicEditor.insertInteractCommandEval = function(command, values)
+	me = self
 
-		if (command == "moveLeft") then
-			position = values.pull()
-			if (position == null) then position = 1;
+	if (command == "indent") then
+		me.insertInteractEval(char(9))
+	else
+		me.exception("<color=red>Command is not yet implemented</color>")
+	end if
+end function
 
-			me.setPosition(cursorLine, cursorOffset[0] + (position * -1))
-		else if (command == "moveRight") then
-			position = values.pull()
-			if (position == null) then position = 1;
+BasicEditor.insertInteractEval = function(value)
+	me = self
+	cursorLine = me.state.getItem("cursor-line")
+	cursorOffset = me.state.getItem("cursor-offset")
+	lastItemIndex = me.insertLines.len - 1
+	
+	index = value.indexOf(char(10))
+	lastIndex = 0
 
-			me.setPosition(cursorLine, cursorOffset[0] + position)
-		else if (command == "moveUp") then
-			position = values.pull()
-			if (position == null) then position = 1;
+	if (index == null) then
+		me.insertLines[lastItemIndex] = me.insertLines[lastItemIndex] + value
+		return
+	end if
 
-			me.setPosition(cursorLine + (position * -1), cursorOffset)
-		else if (command == "moveDown") then
-			position = values.pull()
-			if (position == null) then position = 1;
+	indexOffset = 0
 
-			me.setPosition(cursorLine + position, cursorOffset)
-		else if (command == "gotoLine") then
-			position = values.pull()
-			if (position == null) then position = 0 else position = position - 1;
-			me.setPosition(position, cursorOffset)
-		else if (command == "gotoOffset") then
-			if (values.len == 2) then
-				position = values[0]
-				positionRight = values[1]
-				me.setPosition(cursorLine, [position, positionRight])
-			else
-				position = values.pull()
-				if (position == null) then position = 0;
-				me.setPosition(cursorLine, position)
-			end if
-		else if (command == "appendAbove") then
-			me.enterInsert()
-		else if (command == "appendBelow") then
-			me.setPosition(cursorLine + 1, cursorOffset, true)
-			me.enterInsert()
-		else if (command == "insert") then
-			me.enterInsert(true)
-		else if (command == "insertAtBeginning") then
-			me.setPosition(cursorLine, [0, me.lines[cursorLine].len])
-			me.enterInsert(true)
-		else if (command == "deleteLine") then
-			me.deleteLine()
-		else if (command == "deleteMarkedText") then
-			me.deleteMarkedText()
-		else if (command == "find") then
-			me.findAndShowLines()
-		else if (command == "findAndJumpNext") then
-			me.find()
-			me.selectNextFindResult()
-		else if (command == "findNextResult") then
-			me.selectNextFindResult()
-		else if (command == "findAndJumpPrevious") then
-			me.find()
-			me.selectPreviousFindResult()
-		else if (command == "findPreviousResult") then
-			me.selectPreviousFindResult()
+	while (index != null)
+		debug("iterate through new lines")
+
+		if (indexOffset == 0) then
+			me.insertLines[lastItemIndex] = me.insertLines[lastItemIndex] + value[lastIndex: index]
 		else
-			me.exception("<color=red>Command is not yet implemented</color>")
-		end if
-	end function
-
-	BasicEditor.insertInteract = function()
-		me = self
-		mainCmds = me.getMainCmds()
-		insertCmds = me.getInteractCmds()
-
-		response = me.enrichedUserInput.prompt(me.lastInsertOutput)
-
-		if (response.raw.indexOf(":") == 0) then
-			vimCmd = me.parseCmdInput(response.raw)
-
-			if (vimCmd == null) then
-				me.exception("invalid command")
-			else if (insertCmds.hasIndex(vimCmd.cmd)) then
-				me.insertInteractCommandEval(insertCmds[vimCmd.cmd], vimCmd.values)
-			else if (mainCmds.hasIndex(vimCmd.cmd)) then
-				me.mainInteractEval(mainCmds[vimCmd.cmd], vimCmd.values)
-			else
-				me.exception("Unknown command")
-			end if
-		else
-			me.insertInteractEval(response.raw)
+			me.insertLines.push(value[lastIndex: index])
 		end if
 
-		me.render()
-		me.state.set("interact")
-	end function
+		lastIndex = index + 2
+		index = value.indexOf(char(10), index)
+		indexOffset = indexOffset + 1
+	end while
 
-	BasicEditor.insertInteractCommandEval = function(command, values)
-		me = self
+	lastValue = value[lastIndex:]
 
-		if (command == "indent") then
-			me.insertInteractEval(char(9))
-		else
-			me.exception("<color=red>Command is not yet implemented</color>")
-		end if
-	end function
+	if (lastValue == null) then
+		lastValue = ""
+	end if
 
-	BasicEditor.insertInteractEval = function(value)
-		me = self
-		cursorLine = me.state.getItem("cursor-line")
-		cursorOffset = me.state.getItem("cursor-offset")
-		lastItemIndex = me.insertLines.len - 1
-		
-		index = value.indexOf(char(10))
-		lastIndex = 0
+	me.insertLines.push(lastValue)
+end function
 
-		if (index == null) then
-			me.insertLines[lastItemIndex] = me.insertLines[lastItemIndex] + value
-			return
-		end if
+BasicEditor.mainCustomInteractEval = function(command, values)
+	me = self
+	me.exception("<color=red>Main custom interactions are not yet implemented</color>")
+end function
 
-		indexOffset = 0
+BasicEditor.mainInteractEval = function(command, values)
+	me = self
 
-		while (index != null)
-			debug("iterate through new lines")
+	if (command == "close") then
+		me.close()
+	else if (command == "help") then
+		me.exception("Currently there is no help implemented. You can checkout this Vim cheatsheet though: <b>https://gist.github.com/awidegreen/3854277</b>")
+	else if (command == "saveAs") then
+		me.saveAs()
+	else if (command == "save") then
+		me.save()
+	else if (command == "saveQuit") then
+		me.saveQuit()
+	else if (command == "setOptions") then
+		me.setOptions()
+	else
+		me.exception("<color=red>Command is not yet implemented</color>")
+	end if
+end function
 
-			if (indexOffset == 0) then
-				me.insertLines[lastItemIndex] = me.insertLines[lastItemIndex] + value[lastIndex: index]
-			else
-				me.insertLines.push(value[lastIndex: index])
-			end if
+BasicEditor.enterInsert = function(override)
+	me = self
+	cursorLine = me.state.getItem("cursor-line")
+	cursorOffset = me.state.getItem("cursor-offset")
+	left = ""
 
-			lastIndex = index + 2
-			index = value.indexOf(char(10), index)
-			indexOffset = indexOffset + 1
-		end while
+	if (override == null) then override = false;
 
-		lastValue = value[lastIndex:]
-
-		if (lastValue == null) then
-			lastValue = ""
-		end if
-
-		me.insertLines.push(lastValue)
-	end function
-
-	BasicEditor.mainCustomInteractEval = function(command, values)
-		me = self
-		me.exception("<color=red>Main custom interactions are not yet implemented</color>")
-	end function
-
-	BasicEditor.mainInteractEval = function(command, values)
-		me = self
-
-		if (command == "close") then
-			me.close()
-		else if (command == "help") then
-			me.exception("Currently there is no help implemented. You can checkout this Vim cheatsheet though: <b>https://gist.github.com/awidegreen/3854277</b>")
-		else if (command == "saveAs") then
-			me.saveAs()
-		else if (command == "save") then
-			me.save()
-		else if (command == "saveQuit") then
-			me.saveQuit()
-		else if (command == "setOptions") then
-			me.setOptions()
-		else
-			me.exception("<color=red>Command is not yet implemented</color>")
-		end if
-	end function
-
-	BasicEditor.enterInsert = function(override)
-		me = self
-		cursorLine = me.state.getItem("cursor-line")
-		cursorOffset = me.state.getItem("cursor-offset")
-		left = ""
-
-		if (override == null) then override = false;
-
-		if (override) then
-			leftIndex = cursorOffset[0]
-			rightIndex = cursorOffset[1]
-			existingText = me.lines[cursorLine][:leftIndex]
-			me.insertTextRight = me.lines[cursorLine][rightIndex:]
-
-			if (existingText) then
-				left = existingText
-			end if
-		end if
-
-		me.insertLines = [left]
-		me.insertOverride = override
-		me.state.setItem("mode", me.getModes().insert)
-	end function
-
-	BasicEditor.exitInsert = function()
-		me = self
-		cursorLine = me.state.getItem("cursor-line")
-		cursorOffset = me.state.getItem("cursor-offset")
-
-		if (me.insertLines.join("").len > 0) then
-			if (me.insertOverride) then
-				lastLine = me.insertLines.len - 1
-				me.insertLines[lastLine] = me.insertLines[lastLine] + me.insertTextRight
-				me.replaceInsertLines()
-			else
-				me.appendInsertLines()
-			end if
-
-			me.setPosition(cursorLine, cursorOffset)
-
-			me.saved = false
-		end if
-
-		me.state.setItem("mode", me.getModes().visual)
-	end function
-
-	BasicEditor.appendInsertLines = function()
-		me = self
-		oldLines = me.lines
-		insertLines = me.insertLines
-		newLines = oldLines
-		cursorLine = me.state.getItem("cursor-line")
-
-		if (cursorLine == oldLines.len) then
-			newLines = oldLines + insertLines
-		else if (cursorLine == 0) then
-			newLines = insertLines + oldLines
-		else
-			newLines = oldLines[0: cursorLine] + insertLines + oldLines[cursorLine:]
-		end if
-
-		me.lines = newLines
-	end function
-
-	BasicEditor.replaceInsertLines = function()
-		me = self
-		oldLines = me.lines
-		insertLines = me.insertLines
-		newLines = oldLines
-		cursorLine = me.state.getItem("cursor-line")
-
-		if (oldLines.len <= 1) then
-			me.lines = insertLines
-			return
-		end if
-
-		if (cursorLine == oldLines.len) then
-			newLines = oldLines[0: cursorLine - 1] + insertLines
-		else if (cursorLine == 0) then
-			newLines = insertLines + oldLines[1:]
-		else
-			newLines = oldLines[0: cursorLine] + insertLines + oldLines[cursorLine + 1:]
-		end if
-
-		me.lines = newLines
-	end function
-
-	BasicEditor.deleteMarkedText = function()
-		me = self
-		cursorLine = me.state.getItem("cursor-line")
-		cursorOffset = me.state.getItem("cursor-offset")
-		line = me.lines[cursorLine]
-		leftText = ""
-		rightText = ""
+	if (override) then
 		leftIndex = cursorOffset[0]
 		rightIndex = cursorOffset[1]
+		existingText = me.lines[cursorLine][:leftIndex]
+		me.insertTextRight = me.lines[cursorLine][rightIndex:]
+
+		if (existingText) then
+			left = existingText
+		end if
+	end if
+
+	me.insertLines = [left]
+	me.insertOverride = override
+	me.state.setItem("mode", me.getModes().insert)
+end function
+
+BasicEditor.exitInsert = function()
+	me = self
+	cursorLine = me.state.getItem("cursor-line")
+	cursorOffset = me.state.getItem("cursor-offset")
+
+	if (me.insertLines.join("").len > 0) then
+		if (me.insertOverride) then
+			lastLine = me.insertLines.len - 1
+			me.insertLines[lastLine] = me.insertLines[lastLine] + me.insertTextRight
+			me.replaceInsertLines()
+		else
+			me.appendInsertLines()
+		end if
+
+		me.setPosition(cursorLine, cursorOffset)
+
+		me.saved = false
+	end if
+
+	me.state.setItem("mode", me.getModes().visual)
+end function
+
+BasicEditor.appendInsertLines = function()
+	me = self
+	oldLines = me.lines
+	insertLines = me.insertLines
+	newLines = oldLines
+	cursorLine = me.state.getItem("cursor-line")
+
+	if (cursorLine == oldLines.len) then
+		newLines = oldLines + insertLines
+	else if (cursorLine == 0) then
+		newLines = insertLines + oldLines
+	else
+		newLines = oldLines[0: cursorLine] + insertLines + oldLines[cursorLine:]
+	end if
+
+	me.lines = newLines
+end function
+
+BasicEditor.replaceInsertLines = function()
+	me = self
+	oldLines = me.lines
+	insertLines = me.insertLines
+	newLines = oldLines
+	cursorLine = me.state.getItem("cursor-line")
+
+	if (oldLines.len <= 1) then
+		me.lines = insertLines
+		return
+	end if
+
+	if (cursorLine == oldLines.len) then
+		newLines = oldLines[0: cursorLine - 1] + insertLines
+	else if (cursorLine == 0) then
+		newLines = insertLines + oldLines[1:]
+	else
+		newLines = oldLines[0: cursorLine] + insertLines + oldLines[cursorLine + 1:]
+	end if
+
+	me.lines = newLines
+end function
+
+BasicEditor.deleteMarkedText = function()
+	me = self
+	cursorLine = me.state.getItem("cursor-line")
+	cursorOffset = me.state.getItem("cursor-offset")
+	line = me.lines[cursorLine]
+	leftText = ""
+	rightText = ""
+	leftIndex = cursorOffset[0]
+	rightIndex = cursorOffset[1]
+
+	if (leftIndex > 0) then
+		leftText = line[:leftIndex]
+	end if
+
+	if (rightIndex < line.len) then
+		rightText = line[rightIndex:]
+	end if
+
+	me.lines[cursorLine] = leftText + rightText
+	me.saved = false
+end function
+
+BasicEditor.deleteLine = function()
+	me = self
+	oldLines = me.lines
+	newLines = oldLines
+	cursorLine = me.state.getItem("cursor-line")
+
+	if (cursorLine == oldLines.len) then
+		cursorOffset = me.state.getItem("cursor-offset")
+
+		newLines = oldLines[0: cursorLine - 1]
+		me.setPosition(cursorLine - 1, cursorOffset)
+	else if (cursorLine == 0) then
+		newLines = oldLines[1:]
+	else
+		newLines = oldLines[0: cursorLine] + oldLines[cursorLine + 1:]
+	end if
+
+	me.lines = newLines
+	me.saved = false
+end function
+
+BasicEditor.setPosition = function(position, offset, appendLines)
+	me = self
+	linesLength = me.lines.len
+	
+	if (linesLength <= position) then
+		if (appendLines) then
+			newLines = ("." * (position - linesLength - 1)).split(".")
+			me.lines = me.lines + newLines
+			linesLength = me.lines.len
+		else
+			position = linesLength - 1
+		end if
+	else if (position < 0) then
+		position = 0
+	end if
+
+	line = me.lines[position]
+	lineLength = line.len
+
+	if (typeof(offset) == "number") then
+		if (lineLength < offset) then
+			offset = lineLength
+		else if (offset < 0) then
+			offset = 0
+		end if
+
+		offset = [offset, offset]
+	else
+		left = offset[0]
+		right = offset[1]
+
+		if (lineLength < left) then
+			left = lineLength
+		else if (left < 0) then
+			left = 0
+		end if
+
+		if (lineLength < right) then
+			right = lineLength
+		else if (offset < 0) then
+			right = 0
+		end if
+
+		if (left >= right) then
+			left = right
+		end if
+
+		offset = [left, right]
+	end if
+
+	me.state.setItem("cursor-line", position)
+	me.state.setItem("cursor-offset", offset)
+end function
+
+BasicEditor.getVisibleLines = function()
+	me = self
+	visibleLines = me.config.get("visible-lines").val
+
+	if (visibleLines <= 0) then
+		return 80000
+	end if
+
+	return visibleLines
+end function
+
+BasicEditor.beforeSubRender = function()
+	return
+end function
+
+BasicEditor.render = function()
+	me = self
+
+	if (me.gracefulShutdown) then
+		return null
+	end if
+
+	modes = me.getModes()
+	currentMode = me.state.getItem("mode")
+
+	me.clearScreen()
+
+	print("<b><u>tedit</u></b>")
+
+	me.beforeSubRender()
+
+	if (currentMode == modes.visual) then
+		me.visualRender()
+	else if (currentMode == modes.insert) then
+		me.insertRender()
+	end if
+
+	return null
+end function
+
+BasicEditor.visualRender = function()
+	me = self
+	visibleLines = me.getVisibleLines()
+	cursorLine = me.state.getItem("cursor-line")
+	startLine = cursorLine - (visibleLines / 2)
+	endLine = cursorLine + (visibleLines / 2)
+	linesLength = me.lines.len
+	currentMode = me.state.getItem("mode")
+
+	if (startLine < 0) then
+		startLine = 0
+	end if
+
+	if (endLine > linesLength) then
+		endLine = linesLength
+	end if
+
+	numberWidth = str(endLine + 1).len
+
+	index = startLine
+
+	while (index < endLine)
+		debug("render visual lines")
+
+		line = me.lines[index]
+		output = me.prepareLineNumber(index, numberWidth)
+		output = output + me.prepareVisualLine(line, index)
+
+		print(output)
+
+		index = index + 1
+	end while
+
+	return null
+end function
+
+BasicEditor.insertRender = function()
+	me = self
+	visibleLines = me.getVisibleLines()
+	cursorLine = me.state.getItem("cursor-line")
+	startLine = cursorLine - (visibleLines / 2)
+	endLine = cursorLine
+	currentMode = me.state.getItem("mode")
+	insertLinesLength = me.insertLines.len
+
+	if (startLine < 0) then
+		startLine = 0
+	end if
+
+	numberWidth = str(endLine + 1 + insertLinesLength).len
+	index = startLine
+	newOutput = ""
+
+	while (index < endLine)
+		debug("render insert lines")
+
+		line = me.lines[index]
+		output = me.prepareLineNumber(index, numberWidth, false)
+		output = output + me.prepareVisualLine(line, index)
+
+		newOutput = newOutput + output + char(10)
+
+		index = index + 1
+	end while
+
+	for insertLine in me.insertLines
+		output = me.prepareLineNumber(index, numberWidth, false)
+		output = output + me.prepareVisualLine(insertLine, index, false)
+
+		//user_input now creates a new line on usage therefore this is in place to give a better indication
+		newOutput = newOutput + output
+
+		if ((insertLinesLength - 1) > index) then
+			newOutput = newOutput + char(10)
+		end if
+
+		index = index + 1
+	end for
+
+	me.lastInsertOutput = newOutput
+
+	return null
+end function
+
+BasicEditor.prepareVisualLine = function(line, index, highlight, offset)
+	me = self
+	state = me.state
+	output = line
+
+	if ((highlight == null and index == state.getItem("cursor-line")) or (highlight != null and highlight)) then
+		if (offset == null) then
+			offset = state.getItem("cursor-offset")
+		end if
+
+		leftIndex = offset[0]
+		rightIndex = offset[1]
+
+		leftStr = ""
+		rightStr = ""
+		current = output[leftIndex: rightIndex]
 
 		if (leftIndex > 0) then
-			leftText = line[:leftIndex]
+			leftStr = output[:leftIndex]
 		end if
 
 		if (rightIndex < line.len) then
-			rightText = line[rightIndex:]
+			rightStr = output[rightIndex:]
 		end if
-
-		me.lines[cursorLine] = leftText + rightText
-		me.saved = false
-	end function
-
-	BasicEditor.deleteLine = function()
-		me = self
-		oldLines = me.lines
-		newLines = oldLines
-		cursorLine = me.state.getItem("cursor-line")
-
-		if (cursorLine == oldLines.len) then
-			cursorOffset = me.state.getItem("cursor-offset")
-
-			newLines = oldLines[0: cursorLine - 1]
-			me.setPosition(cursorLine - 1, cursorOffset)
-		else if (cursorLine == 0) then
-			newLines = oldLines[1:]
-		else
-			newLines = oldLines[0: cursorLine] + oldLines[cursorLine + 1:]
-		end if
-
-		me.lines = newLines
-		me.saved = false
-	end function
-
-	BasicEditor.setPosition = function(position, offset, appendLines)
-		me = self
-		linesLength = me.lines.len
 		
-		if (linesLength <= position) then
-			if (appendLines) then
-				newLines = ("." * (position - linesLength - 1)).split(".")
-				me.lines = me.lines + newLines
-				linesLength = me.lines.len
-			else
-				position = linesLength - 1
-			end if
-		else if (position < 0) then
-			position = 0
-		end if
-
-		line = me.lines[position]
-		lineLength = line.len
-
-		if (typeof(offset) == "number") then
-			if (lineLength < offset) then
-				offset = lineLength
-			else if (offset < 0) then
-				offset = 0
-			end if
-
-			offset = [offset, offset]
+		if (leftIndex != rightIndex) then
+			output = leftStr + "<mark=" + me.config.get("cursor-position-color") + ">" + current + "</mark>" + rightStr
 		else
-			left = offset[0]
-			right = offset[1]
-
-			if (lineLength < left) then
-				left = lineLength
-			else if (left < 0) then
-				left = 0
-			end if
-
-			if (lineLength < right) then
-				right = lineLength
-			else if (offset < 0) then
-				right = 0
-			end if
-
-			if (left >= right) then
-				left = right
-			end if
-
-			offset = [left, right]
+			output = leftStr + "<mark=" + me.config.get("cursor-position-color") + ">" + me.cursorChar + "</mark>" + rightStr
 		end if
+	end if
 
-		me.state.setItem("cursor-line", position)
-		me.state.setItem("cursor-offset", offset)
-	end function
-
-	BasicEditor.getVisibleLines = function()
-		me = self
-		visibleLines = me.config.get("visible-lines").val
-
-		if (visibleLines <= 0) then
-			return 80000
-		end if
-
-		return visibleLines
-	end function
-
-	BasicEditor.beforeSubRender = function()
-		return
-	end function
-
-	BasicEditor.render = function()
-		me = self
-
-		if (me.gracefulShutdown) then
-			return null
-		end if
-
-		modes = me.getModes()
-		currentMode = me.state.getItem("mode")
-
-		me.clearScreen()
-
-		print("<b><u>tedit</u></b>")
-
-		me.beforeSubRender()
-
-		if (currentMode == modes.visual) then
-			me.visualRender()
-		else if (currentMode == modes.insert) then
-			me.insertRender()
-		end if
-
-		return null
-	end function
-
-	BasicEditor.visualRender = function()
-		me = self
-		visibleLines = me.getVisibleLines()
-		cursorLine = me.state.getItem("cursor-line")
-		startLine = cursorLine - (visibleLines / 2)
-		endLine = cursorLine + (visibleLines / 2)
-		linesLength = me.lines.len
-		currentMode = me.state.getItem("mode")
-
-		if (startLine < 0) then
-			startLine = 0
-		end if
-
-		if (endLine > linesLength) then
-			endLine = linesLength
-		end if
-
-		numberWidth = str(endLine + 1).len
-
-		index = startLine
-
-		while (index < endLine)
-			debug("render visual lines")
-
-			line = me.lines[index]
-			output = me.prepareLineNumber(index, numberWidth)
-			output = output + me.prepareVisualLine(line, index)
-
-			print(output)
-
-			index = index + 1
-		end while
-
-		return null
-	end function
-
-	BasicEditor.insertRender = function()
-		me = self
-		visibleLines = me.getVisibleLines()
-		cursorLine = me.state.getItem("cursor-line")
-		startLine = cursorLine - (visibleLines / 2)
-		endLine = cursorLine
-		currentMode = me.state.getItem("mode")
-		insertLinesLength = me.insertLines.len
-
-		if (startLine < 0) then
-			startLine = 0
-		end if
-
-		numberWidth = str(endLine + 1 + insertLinesLength).len
-		index = startLine
-		newOutput = ""
-
-		while (index < endLine)
-			debug("render insert lines")
-
-			line = me.lines[index]
-			output = me.prepareLineNumber(index, numberWidth, false)
-			output = output + me.prepareVisualLine(line, index)
-
-			newOutput = newOutput + output + char(10)
-
-			index = index + 1
-		end while
-
-		for insertLine in me.insertLines
-			output = me.prepareLineNumber(index, numberWidth, false)
-			output = output + me.prepareVisualLine(insertLine, index, false)
-
-			//user_input now creates a new line on usage therefore this is in place to give a better indication
-			newOutput = newOutput + output
-
-			if ((insertLinesLength - 1) > index) then
-				newOutput = newOutput + char(10)
-			end if
-
-			index = index + 1
-		end for
-
-		me.lastInsertOutput = newOutput
-
-		return null
-	end function
-
-	BasicEditor.prepareVisualLine = function(line, index, highlight, offset)
-		me = self
-		state = me.state
-		output = line
-
-		if ((highlight == null and index == state.getItem("cursor-line")) or (highlight != null and highlight)) then
-			if (offset == null) then
-				offset = state.getItem("cursor-offset")
-			end if
-
-			leftIndex = offset[0]
-			rightIndex = offset[1]
-
-			leftStr = ""
-			rightStr = ""
-			current = output[leftIndex: rightIndex]
-
-			if (leftIndex > 0) then
-				leftStr = output[:leftIndex]
-			end if
-
-			if (rightIndex < line.len) then
-				rightStr = output[rightIndex:]
-			end if
-			
-			if (leftIndex != rightIndex) then
-				output = leftStr + "<mark=" + me.config.get("cursor-position-color") + ">" + current + "</mark>" + rightStr
-			else
-				output = leftStr + "<mark=" + me.config.get("cursor-position-color") + ">" + me.cursorChar + "</mark>" + rightStr
-			end if
-		end if
-
-		return output
-	end function
-
-	BasicEditor.prepareInsertLine = function(line, index)
-		return line
-	end function
-
-	BasicEditor.prepareLineNumber = function(index, maxWidth, highlighting)
-		me = self
-		state = me.state
-		output = ""
-
-		lineNumber = str(index + 1)
-
-		if (lineNumber.len < maxWidth) then
-			lineNumber = (" " * (maxWidth - lineNumber.len)) + lineNumber
-		end if
-
-		//166
-		output = output + lineNumber + " " + me.lineNumberDelimiterChar + " " + char(9)
-
-		if ((highlighting != null and highlighting) or (highlighting == null and index == state.getItem("cursor-line"))) then
-			output = "<color=" + me.config.get("line-position-color") + ">" + output + "</color>"
-		end if
-
-		return output
-	end function
-
-	BasicEditor.open = function()
-		me = self
-		state = me.state
-
-		me.render()
-		state.set("interact")
-
-		while (state.next())
-			if (me.gracefulShutdown) then
-				break
-			end if
-
-			debug("next state")
-		end while
-	end function
-
-	BasicEditor.exception = function(msg)
-		me = self
-		me.enrichedUserInput.userInput(char(10) + msg + char (10) + "Press any button to continue...")
-	end function
-
-	BasicEditor.clearScreen = function()
-		wait(0.1)
-		print(char(0)) //this will debug stuck waits
-		clear_screen
-	end function
-
-	return BasicEditor
+	return output
 end function
 
-injector.def("basicEditor", ["state", "enrichedUserInput", "vimLexer"], @basicEditorModule)
+BasicEditor.prepareInsertLine = function(line, index)
+	return line
+end function
+
+BasicEditor.prepareLineNumber = function(index, maxWidth, highlighting)
+	me = self
+	state = me.state
+	output = ""
+
+	lineNumber = str(index + 1)
+
+	if (lineNumber.len < maxWidth) then
+		lineNumber = (" " * (maxWidth - lineNumber.len)) + lineNumber
+	end if
+
+	//166
+	output = output + lineNumber + " " + me.lineNumberDelimiterChar + " " + char(9)
+
+	if ((highlighting != null and highlighting) or (highlighting == null and index == state.getItem("cursor-line"))) then
+		output = "<color=" + me.config.get("line-position-color") + ">" + output + "</color>"
+	end if
+
+	return output
+end function
+
+BasicEditor.open = function()
+	me = self
+	state = me.state
+
+	me.render()
+	state.set("interact")
+
+	while (state.next())
+		if (me.gracefulShutdown) then
+			break
+		end if
+
+		debug("next state")
+	end while
+end function
+
+BasicEditor.exception = function(msg)
+	me = self
+	me.enrichedUserInput.userInput(char(10) + msg + char (10) + "Press any button to continue...")
+end function
+
+BasicEditor.clearScreen = function()
+	wait(0.1)
+	print(char(0)) //this will debug stuck waits
+	clear_screen
+end function

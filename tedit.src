@@ -1,31 +1,13 @@
-import_code("/root/utils/injector.src":"./utils/injector.src")
-import_code("/root/utils/inherits.src":"./utils/inherits.src")
-import_code("/root/utils/argv.src":"./utils/argv.src")
-import_code("/root/utils/loadLib.src":"./utils/loadLib.src")
-import_code("/root/utils/styledText.src":"./utils/styledText.src")
-import_code("/root/utils/lexer.src":"./utils/lexer.src")
-import_code("/root/utils/highlighter.src":"./utils/highlighter.src")
-import_code("/root/utils/parser.src":"./utils/parser.src")
-import_code("/root/utils/eventEmitter.src":"./utils/eventEmitter.src")
-import_code("/root/utils/state.src":"./utils/state.src")
-import_code("/root/utils/localConfig.src":"./utils/localConfig.src")
-import_code("/root/utils/enrichedUserInput.src":"./utils/enrichedUserInput.src")
-import_code("/root/utils/router.src":"./utils/router.src")
-import_code("/root/utils/vimLexer.src":"./utils/vimLexer.src")
-import_code("/root/utils/basicEditor.src":"./utils/basicEditor.src")
-import_code("/root/utils/codeEditorPlugin.src":"./utils/codeEditorPlugin.src")
-import_code("/root/utils/interpreter.src":"./utils/interpreter.src")
-
-State = injector.get("state")
-EnrichedUserInput = injector.get("enrichedUserInput")
-Router = injector.get("router")
-LocalConfig = injector.get("localConfig")
-Highlighter = injector.get("highlighter")
-BasicEditor = injector.get("basicEditor")
+import_code("./utils/argv.src")
+import_code("./utils/state.src")
+import_code("./utils/enrichedUserInput.src")
+import_code("./utils/router.src")
+import_code("./utils/localConfig.src")
+import_code("./utils/highlighter.src")
+import_code("./utils/basicEditor.src")
+import_code("./utils/codeEditorPlugin.src")
 
 parseArgs = function()
-	Argv = injector.get("argv")
-	
 	argDefinitions = []
 	
 	argDefinitions.push((new Argv.Arg).constructor("h", "help", Argv.ArgType.FLAG, "Print help"))
@@ -61,7 +43,7 @@ showPlugins = function()
 		index = index + 1
 	end for
 
-	pluginIndex = EnrichedUserInput.prompt(char(10) + "Select plugin:" + char(10) + "> ")
+	pluginIndex = UserInput.prompt(char(10) + "Select plugin:" + char(10) + "> ")
 	pluginIndex = pluginIndex.raw.val
 
 	if (availableEditors.hasIndex(pluginIndex)) then
@@ -95,7 +77,7 @@ openEditor = function(file)
 	end function
 
 	//plugins
-	editorPlugins.push(injector.get("codeEditorPlugin"))
+	editorPlugins.push(CodeEditorPlugin)
 
 	//init
 	if (typeof(file) == "file") then
