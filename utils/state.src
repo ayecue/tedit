@@ -57,7 +57,7 @@ State.has = function(path)
 end function
 
 State.setItem = function(path, value)
-	if (typeof(path) == "string") then path = path.split(".")
+	if (typeof(path) == "string") then path = path.split("\.")
 	me = self
 	current = me.store
 	last = path.pop()
@@ -79,7 +79,7 @@ State.setItem = function(path, value)
 end function
 
 State.getItem = function(path, defaultValue)
-	if (typeof(path) == "string") then path = path.split(".")
+	if (typeof(path) == "string") then path = path.split("\.")
 	me = self
 	current = me.store
 

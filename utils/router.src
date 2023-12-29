@@ -55,7 +55,7 @@ Router.insertParams = function(path, args)
 	me = self
 	argsObj = {"classID":"params","map":{}}
 	argsObj.get = function(path, defaultValue)
-		if (typeof(path) == "string") then path = path.split(".")
+		if (typeof(path) == "string") then path = path.split("\.")
 		me = self
 		current = me.map
 

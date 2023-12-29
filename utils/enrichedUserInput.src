@@ -82,7 +82,7 @@ UserInput.request = function(queryList, allowExit, defaultInputMap, ignoreGlobal
 		me = self
 		response = {"classID":"response","map":{}}
 		response.get = function(path)
-			if (typeof(path) == "string") then path = path.split(".")
+			if (typeof(path) == "string") then path = path.split("\.")
 			me = self
 			current = me.map
 

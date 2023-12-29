@@ -321,7 +321,7 @@ BasicEditor.setOptions = function()
 		print(char(9) + "<b>" + item.key + "</b>" + "=<i>" + item.value + "</i>")
 	end for
 
-	response = EnrichedUserInput.prompt(char(10) + "Set option (Example: visible-lines 10):" + char(10) + "> ")
+	response = me.enrichedUserInput.prompt(char(10) + "Set option (Example: visible-lines 10):" + char(10) + "> ")
 
 	if (me.config.data.hasIndex(response.cmd)) then
 		me.config.write(response.cmd, response.args.trim, true)
@@ -897,7 +897,7 @@ BasicEditor.setPosition = function(position, offset, appendLines)
 	
 	if (linesLength <= position) then
 		if (appendLines) then
-			newLines = ("." * (position - linesLength - 1)).split(".")
+			newLines = ("." * (position - linesLength - 1)).split("\.")
 			me.lines = me.lines + newLines
 			linesLength = me.lines.len
 		else
@@ -1147,7 +1147,7 @@ end function
 
 BasicEditor.exception = function(msg)
 	me = self
-	me.enrichedUserInput.userInput(char(10) + msg + char (10) + "Press any button to continue...")
+	me.enrichedUserInput.userInput(char(10) + msg + char(10) + "Press any button to continue...")
 end function
 
 BasicEditor.clearScreen = function()

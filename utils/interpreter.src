@@ -1,2362 +1,2987 @@
 import_code("./injector.src")
 import_code("./lexer.src")
 import_code("./parser.src")
-//Obfuscated and minified :)
-Z=function(I)
-Х=I.dynResolve
-Ч=Parser
-d=I.dynApply
-e={"members":{}}
-e.add=function(g,h)
-O=self
-O.members[g]=h
-return O
-end function
-e.isInstanceOf=function(k)
-O=self
-return O.members.hasIndex(typeof(@k))
-end function
-e.get=function(g)
-O=self
-if O.members.hasIndex(g) then
-return O.members[g]
-end if
-return null
-end function
-ӟ={"members":{}}
-ӟ.add=function(g,h)
-O=self
-O.members[g]=h
-return O
-end function
-ӟ.isInstanceOf=function(k)
-O=self
-return O.members.hasIndex(typeof(@k))
-end function
-ӟ.get=function(g)
-O=self
-if O.members.hasIndex(g) then
-return O.members[g]
-end if
-return null
-end function
-ӟ.ExpressionManager=e
-e.OperationManager=ӟ
-n={"members":{}}
-n.add=function(ҥ)
-O=self
-O.members[ҥ.id]=ҥ
-return O
-end function
-n.get=function(g)
-O=self
-if O.members.hasIndex(g) then
-return O.members[g]
-end if
-return null
-end function
-q={"members":{}}
-q.add=function(ҥ)
-O=self
-O.members[ҥ.id]=ҥ
-return O
-end function
-q.get=function(g)
-O=self
-if O.members.hasIndex(g) then
-return O.members[g]
-end if
-return null
-end function
-Ԁ={}
-e.add("AssignExpression",Ԁ)
-Ԁ.dynResolve=Х
-Ԁ.ExpressionManager=e
-Ԁ.OperationManager=ӟ
-Ԁ.FunctionRegistry=n
-Ԁ.ScopeRegistry=q
-Ԁ.constructor=function(s,t)
-O=self
-u=function(І)
-O=self
-h=null
-w=null
-if (І.type=="AssignmentStatement") then
-h={"left":O.build(І.variable),"right":O.build(І.init)}
-else
-h=O.cpsWalker.visit(І)
-end if
-return h
-end function
-Ϩ={"cpsWalker":t,"build":@u}
-O.classID="AssignExpression"
-O.ast=s
-O.expr=Ϩ.build(s)
-O.isExpression=true
-O.cpsWalker=t
-return O
-end function
-Ԁ.get=function(Ϭ,ϭ)
-O=self
-Ϯ=function(І)
-O=self.instance
-ϰ=self.opc
-if not O.ExpressionManager.isInstanceOf(І.left) then
-ϰ.dbgr.raise(["Unexpected left assignment",O,ϱ].join(" "))
-end if
-ϱ=І.left.get(ϰ,O.expr)
-ϴ=@І.right
-if O.ExpressionManager.isInstanceOf(@ϴ) then
-ϴ=ϴ.get(ϰ)
-else if O.OperationManager.isInstanceOf(@ϴ) then
-ϴ=ϴ.get(ϰ)
-if (typeof(@ϴ)=="proxyFunction") then
-ϴ=O.FunctionRegistry.get(ϴ.id)
-end if
-ϵ=ϱ.path.len
-if ((typeof(@ϴ)=="FunctionOperation") and (typeof(ϱ.handle)!="null")) then
-Ϲ=typeof(ϱ.handle)
-if (((Ϲ!="string") and (Ϲ!="number")) and (Ϲ!="boolean")) then
-ϴ=ϴ.fork(ϱ.handle)
-end if
-end if
-else if (@ϴ==null) then
-ϰ.dbgr.raise(["Unexpected right assignment",O,@ϴ].join(" "))
-end if
-if (typeof(ϱ.handle)!="null") then
-ϻ=typeof(ϱ.handle)
-if (ϻ=="proxyScope") then
-ϰ.dbgr.debug({"type":"AssignExpression","description":"assign with operationContext","leftType":ϻ,"right":@ϴ})
-ϼ=O.ScopeRegistry.get(ϱ.handle.id)
-ϼ.set(ϱ.path,@ϴ)
-return true
-end if
-ϰ.dbgr.debug({"type":"AssignExpression","description":"assign with handle","leftType":ϻ,"right":@ϴ})
-if (((ϻ!="string") and (ϻ!="boolean")) and (ϻ!="number")) then
-Ͼ=ϱ.path
-Ͽ=ϱ.handle
-O.dynResolve.set(Ͽ,Ͼ,@ϴ)
-return true
-else
-ϰ.dbgr.raise(["Unexpected left assignment",O,ϱ].join(" "))
-end if
-end if
-ϰ.dbgr.debug({"type":"AssignExpression","description":"assign with scope","path":ϱ.path,"right":@ϴ})
-ϰ.set(ϱ.path,@ϴ)
-return true
-end function
-Ѐ={"instance":O,"eval":@Ϯ,"opc":Ϭ}
-Ϭ.dbgr.debug({"type":"AssignExpression","description":"get expr","line":O.ast.line,"expr":O.expr})
-return Ѐ.eval(O.expr)
-end function
-Ѓ={}
-e.add("BinaryNegatedExpression",Ѓ)
-Ѓ.dynResolve=Х
-Ѓ.ExpressionManager=e
-Ѓ.OperationManager=ӟ
-Є=function(Ѕ)
-return Ѕ
-end function
-Ї=function(Ѕ)
-return (Ѕ*-1)
-end function
-Ѓ.OPERATIONS={"+":@Є,"-":@Ї}
-Ѓ.constructor=function(s,t)
-O=self
-u=function(І)
-O=self
-h=null
-if (І.type=="BinaryNegatedExpression") then
-h={"classID":І.type,"operator":І.operator,"arg":O.build(І.arg)}
-else
-h=O.cpsWalker.visit(І)
-end if
-return h
-end function
-Ϩ={"cpsWalker":t,"build":@u}
-O.classID="BinaryNegatedExpression"
-O.ast=s
-O.expr=Ϩ.build(s)
-O.isExpression=true
-O.cpsWalker=t
-return O
-end function
-Ѓ.get=function(Ϭ,ϭ)
-O=self
-Ϯ=function(І)
-O=self.instance
-Ϭ=self.opc
-if (typeof(І)=="BinaryNegatedExpression") then
-Њ=self.eval(І.arg)
-ҥ=@O.OPERATIONS[І.operator]
-return ҥ(Њ)
-end if
-if (O.ExpressionManager.isInstanceOf(І) or O.OperationManager.isInstanceOf(І)) then
-return І.get(Ϭ)
-end if
-return І
-end function
-Ѐ={"instance":O,"eval":@Ϯ,"opc":Ϭ}
-Ϭ.dbgr.debug({"type":"BinaryNegatedExpression","description":"get expr","line":O.ast.line,"expr":O.expr})
-return Ѐ.eval(O.expr)
-end function
-Ћ={}
-e.add("CallExpression",Ћ)
-Ћ.dynResolve=Х
-Ћ.dynApply=d
-Ћ.ExpressionManager=e
-Ћ.OperationManager=ӟ
-Ћ.FunctionRegistry=n
-Ћ.constructor=function(s,t)
-O=self
-u=function(І)
-O=self
-h=null
-w=null
-if (І.type=="CallStatement") then
-h=O.build(І.expression)
-else if (І.type=="CallExpression") then
-Ќ=[]
-for Ѝ in І.arguments
-Ќ.push(O.cpsWalker.visit(Ѝ))
-end for
-h={"classID":"call","path":O.build(І.base),"args":Ќ}
-else
-h=O.cpsWalker.visit(І)
-end if
-return h
-end function
-Ϩ={"cpsWalker":t,"build":@u}
-O.classID="CallExpression"
-O.ast=s
-O.expr=Ϩ.build(s)
-O.isExpression=true
-O.cpsWalker=t
-return O
-end function
-Ћ.get=function(Ϭ,ϭ)
-O=self
-А=function(Ќ)
-O=self.instance
-ϰ=self.opc
-Б=[]
-for Ѝ in Ќ
-ϰ.dbgr.debug({"type":"CallExpression","description":"resolve arg","item":@Ѝ})
-if (O.ExpressionManager.isInstanceOf(@Ѝ) or O.OperationManager.isInstanceOf(@Ѝ)) then
-Б.push(Ѝ.get(ϰ))
-else
-Б.push(@Ѝ)
-end if
-end for
-return Б
-end function
-Ϯ=function(І)
-O=self.instance
-ϰ=self.forkedOpc
-if O.ExpressionManager.isInstanceOf(І) then
-return І.get(ϰ)
-end if
-Ќ=self.resolveArgs(І.args)
-ϰ.dbgr.debug({"type":"CallExpression","description":"resolved args","args":Ќ})
-if (typeof(І.path)=="call") then
-Г=self.eval(І.path)
-if (typeof(Г)=="proxyFunction") then
-Г=O.FunctionRegistry.get(Г.id)
-end if
-if O.OperationManager.isInstanceOf(Г) then
-ϰ.setMemory("args",Ќ)
-return Г.run(ϰ)
-else
-ϰ.dbgr.raise(["CallExpression","Unexpected handle result",O,Г].join(" "))
-end if
-end if
-Ж=І.path.get(ϰ,O.expr)
-ϰ.dbgr.debug({"type":"CallExpression","description":"get path expr result","pathExpr":Ж})
-Ϲ=typeof(@Ж.handle)
-if (Ϲ!="null") then
-З=O.dynResolve.getCallable(@Ж.handle,Ж.path)
-ϰ.dbgr.debug({"type":"CallExpression","description":"handle callable","callable":З})
-ϰ.setMemory("args",Ќ)
-if (typeof(@З.origin)=="proxyFunction") then
-З.origin=O.FunctionRegistry.get(З.origin.id)
-end if
-if O.OperationManager.isInstanceOf(@З.origin) then
-return З.origin.run(ϰ)
-else if (typeof(@З.origin)=="function") then
-return O.dynApply.apply(@З.origin,Ќ,З.context)
-end if
-ϰ.dbgr.raise({"type":"CallExpression","description":"Unexpected handle call","pathExpr":Ж,"callable":З})
-end if
-З=ϰ.getCallable(Ж.path)
-ϰ.dbgr.debug({"type":"CallExpression","description":"operationContext","callable":З})
-ϰ.setMemory("args",Ќ)
-if (typeof(@З.origin)=="proxyFunction") then
-З.origin=O.FunctionRegistry.get(З.origin.id)
-end if
-if O.OperationManager.isInstanceOf(@З.origin) then
-Б=З.origin.run(ϰ)
-return Б
-else if (typeof(@З.origin)=="function") then
-return O.dynApply.apply(@З.origin,Ќ,З.context)
-end if
-return @З.origin
-end function
-Ѐ={"instance":O,"eval":@Ϯ,"resolveArgs":@А,"opc":Ϭ,"forkedOpc":Ϭ.fork("CALL","TEMPORARY")}
-Ϭ.dbgr.debug({"type":"CallExpression","description":"get expr","line":O.ast.line,"expr":O.expr})
-return Ѐ.eval(O.expr)
-end function
-Л={}
-e.add("ListExpression",Л)
-Л.dynResolve=Х
-Л.ExpressionManager=e
-Л.OperationManager=ӟ
-Л.constructor=function(s,t)
-O=self
-u=function(І)
-O=self
-h=null
-if (І.type=="ListConstructorExpression") then
-М=[]
-for Ѝ in І.fields
-М.push(O.cpsWalker.visit(Ѝ.value))
-end for
-h={"classID":"listexpr","values":М}
-else
-h=O.cpsWalker.visit(І)
-end if
-return h
-end function
-Ϩ={"cpsWalker":t,"build":@u}
-O.classID="ListExpression"
-O.ast=s
-O.expr=Ϩ.build(s)
-O.isExpression=true
-O.cpsWalker=t
-return O
-end function
-Л.get=function(Ϭ,ϭ)
-O=self
-Ϯ=function(І)
-O=self.instance
-Ϭ=self.opc
-О=([]+І)
-П=[]
-Р=О.pull
-while (typeof(Р)!="null")
-if (O.ExpressionManager.isInstanceOf(Р) or O.OperationManager.isInstanceOf(Р)) then
-П.push(Р.get(Ϭ))
-else
-П.push(Р)
-end if
-Р=О.pull
-end while
-return П
-end function
-Ѐ={"instance":O,"eval":@Ϯ,"opc":Ϭ}
-Ϭ.dbgr.debug({"type":"ListExpression","description":"get expr","line":O.ast.line,"expr":O.expr})
-return Ѐ.eval(O.expr.values)
-end function
-У={}
-e.add("LogicalAndBinaryExpression",У)
-У["+"]=function(Ф,Ц)
-return (Ф+Ц)
-end function
-У["-"]=function(Ф,Ц)
-return (Ф-Ц)
-end function
-У["/"]=function(Ф,Ц)
-return (Ф/Ц)
-end function
-У["*"]=function(Ф,Ц)
-return (Ф*Ц)
-end function
-У["<"]=function(Ф,Ц)
-return (Ф<Ц)
-end function
-У[">"]=function(Ф,Ц)
-return (Ф>Ц)
-end function
-У["%"]=function(Ф,Ц)
-return (Ф%Ц)
-end function
-У[">="]=function(Ф,Ц)
-return (Ф>=Ц)
-end function
-У["=="]=function(Ф,Ц)
-return (Ф==Ц)
-end function
-У["<="]=function(Ф,Ц)
-return (Ф<=Ц)
-end function
-У["=="]=function(Ф,Ц)
-return (Ф==Ц)
-end function
-У["<="]=function(Ф,Ц)
-return (Ф<=Ц)
-end function
-У["!="]=function(Ф,Ц)
-return (Ф!=Ц)
-end function
-У["and"]=function(Ф,Ц)
-return (Ф and Ц)
-end function
-У["or"]=function(Ф,Ц)
-return (Ф or Ц)
-end function
-У["^"]=function(Ф,Ц)
-return bitwise("^",Ф,Ц)
-end function
-У["|"]=function(Ф,Ц)
-return bitwise("|",Ф,Ц)
-end function
-У["<<"]=function(Ф,Ц)
-return bitwise("<<",Ф,Ц)
-end function
-У[">>"]=function(Ф,Ц)
-return bitwise(">>",Ф,Ц)
-end function
-У[">>>"]=function(Ф,Ц)
-return bitwise(">>>",Ф,Ц)
-end function
-У["&"]=function(Ф,Ц)
-return bitwise("&",Ф,Ц)
-end function
-У.OPERATIONS=У
-У.dynApply=d
-У.dynResolve=Х
-У.ExpressionManager=e
-У.OperationManager=ӟ
-У.constructor=function(s,t)
-O=self
-u=function(І)
-O=self
-h=null
-if ((І.type=="LogicalExpression") or (І.type=="BinaryExpression")) then
-h={"classID":І.type,"operator":І.operator,"left":O.build(І.left),"right":O.build(І.right)}
-else
-h=O.cpsWalker.visit(І)
-end if
-return h
-end function
-Ϩ={"cpsWalker":t,"build":@u}
-O.classID="LogicalAndBinaryExpression"
-O.ast=s
-O.expr=Ϩ.build(s)
-O.isExpression=true
-O.cpsWalker=t
-return O
-end function
-У.get=function(Ϭ,ϭ)
-O=self
-Ϯ=function(І)
-O=self.instance
-Ϭ=self.opc
-ϱ=null
-ϴ=null
-ӝ=typeof(І)
-Ϭ.dbgr.debug({"type":"LogicalAndBinaryExpression","description":"type","val":ӝ})
-if (ӝ=="BinaryExpression") then
-ϱ=self.eval(І.left)
-ϴ=self.eval(І.right)
-return O.dynApply.apply(O.OPERATIONS[І.operator],[ϱ,ϴ])
-else if (ӝ=="LogicalExpression") then
-ϱ=self.eval(І.left)
-if ((typeof(ϱ)=="list") and not ϱ) then
-ϱ=false
-end if
-if ((І.operator=="and") and not ϱ) then
-return false
-else if ((І.operator=="or") and ϱ) then
-return true
-end if
-ϴ=self.eval(І.right)
-return O.dynApply.apply(O.OPERATIONS[І.operator],[ϱ,ϴ])
-end if
-if (O.ExpressionManager.isInstanceOf(І) or O.OperationManager.isInstanceOf(І)) then
-return І.get(Ϭ)
-end if
-return І
-end function
-Ѐ={"instance":O,"eval":@Ϯ,"opc":Ϭ}
-Ϭ.dbgr.debug({"type":"LogicalAndBinaryExpression","description":"get expr","line":O.ast.line,"expr":O.expr})
-return Ѐ.eval(O.expr)
-end function
-Ш={}
-e.add("MapExpression",Ш)
-Ш.dynResolve=Х
-Ш.ExpressionManager=e
-Ш.OperationManager=ӟ
-Ш.constructor=function(s,t)
-O=self
-u=function(І)
-O=self
-h=null
-if (І.type=="MapConstructorExpression") then
-М=[]
-for Ѝ in І.fields
-М.push({"key":O.cpsWalker.visit(Ѝ.key),"value":O.cpsWalker.visit(Ѝ.value)})
-end for
-h={"classID":"mapexpr","values":М}
-else
-h=O.cpsWalker.visit(І)
-end if
-return h
-end function
-Ϩ={"cpsWalker":t,"build":@u}
-O.classID="MapExpression"
-O.ast=s
-O.expr=Ϩ.build(s)
-O.isExpression=true
-O.cpsWalker=t
-return O
-end function
-Ш.get=function(Ϭ,ϭ)
-O=self
-Ϯ=function(І)
-O=self.instance
-Ϭ=self.opc
-О=([]+І)
-Щ={}
-Р=О.pull
-while Р
-g=null
-Н=null
-if (typeof(Р.key)=="string") then
-g=Р.key
-else
-Ϭ.dbgr.raise(["Unexpected key",O,Р.key].join(" "))
-end if
-if (O.ExpressionManager.isInstanceOf(Р.value) or O.OperationManager.isInstanceOf(Р.value)) then
-Н=Р.value.get(Ϭ)
-else
-Н=Р.value
-end if
-Щ[g]=Н
-Р=О.pull
-end while
-return Щ
-end function
-Ѐ={"instance":O,"eval":@Ϯ,"opc":Ϭ}
-Ϭ.dbgr.debug({"type":"MapExpression","description":"get expr","line":O.ast.line,"expr":O.expr})
-return Ѐ.eval(O.expr.values)
-end function
-Ъ={}
-e.add("PathExpression",Ъ)
-Ъ.dynResolve=Х
-Ъ.dynApply=d
-Ъ.ExpressionManager=e
-Ъ.OperationManager=ӟ
-Ъ.FunctionRegistry=n
-Ъ.ScopeRegistry=q
-Ъ.constructor=function(s,t)
-O=self
-Ы=function(Ϫ,Ѕ)
-if (typeof(Ѕ)=="list") then
-return (Ϫ+Ѕ)
-end if
-return (Ϫ+[Ѕ])
-end function
-u=function(І)
-O=self
-h=[]
-if (І.type=="MemberExpression") then
-h=O.append(h,O.build(І.base))
-h=O.append(h,O.build(І.identifier))
-else if (І.type=="IndexExpression") then
-h=O.append(h,O.build(І.base))
-Э=O.dynResolve.get(І.index,"type")
-if (Э=="SliceExpression") then
-h=O.append(h,{"classID":"slice","left":O.cpsWalker.visit(І.index.left),"right":O.cpsWalker.visit(І.index.right)})
-else
-h=O.append(h,{"classID":"index","value":O.cpsWalker.visit(І.index)})
-end if
-else if (І.type=="Identifier") then
-h=O.append(h,{"classID":"path","value":І.value})
-else
-h=O.append(h,O.cpsWalker.visit(І))
-end if
-return h
-end function
-Ϩ={"dynResolve":O.dynResolve,"cpsWalker":t,"build":@u,"append":@Ы}
-O.classID="PathExpression"
-O.ast=s
-O.expr=Ϩ.build(s)
-O.isExpression=true
-O.cpsWalker=t
-return O
-end function
-Ъ.getByIndex=function(Ю)
-return self.expr[Ю]
-end function
-Ъ.get=function(Ϭ,ϭ)
-O=self
-ϰ=Ϭ
-Ϯ=function(І)
-O=self.instance
-ϰ=self.opc
-О=([]+І)
-а=[]
-б=0
-ϸ=null
-Р=О.pull
-while Р
-в=typeof(Р)
-if O.ExpressionManager.isInstanceOf(Р) then
-ϸ=Р.get(ϰ,O.expr)
-else if O.OperationManager.isInstanceOf(Р) then
-ϸ=Р.get(ϰ)
-else if (в=="path") then
-ϰ.dbgr.debug({"type":"PathExpression","description":"current path","path":Р.value})
-if ((Р.value=="self") and (б==0)) then
-г=ϰ.getMemory("functionContext")
-Ͽ=O.dynResolve.get(г,"context")
-if (typeof(Ͽ)!="null") then
-ϸ=г.context
-else
-ϰ.dbgr.raise(["Unexpected self",O,Р].join(" "))
-end if
-else
-а.push(Р.value)
-if (О.len>0) then
-Ϲ=typeof(@ϸ)
-if (Ϲ!="null") then
-Й=ϸ
-else
-Й=@ϰ
-end if
-е=typeof(@Й)
-ϰ.dbgr.debug({"type":"PathExpression","description":"traversed","origin":@Й,"originType":е})
-if (е=="proxyScope") then
-ϼ=O.ScopeRegistry.get(Й.id)
-ϸ=ϼ.get(а)
-else if ((е=="operationContext") or O.ExpressionManager.isInstanceOf(@Й)) then
-ϸ=Й.get(а)
-else
-З=O.dynResolve.getCallable(@Й,а)
-е=typeof(@З.origin)
-ϰ.dbgr.debug({"type":"PathExpression","description":"traversed","callable":З})
-if (е=="function") then
-ϸ=O.dynApply.apply(@З.origin,null,З.context)
-else if (е=="operationContext") then
-ϸ=З.origin.createProxy
-else
-ϸ=@З.origin
-end if
-end if
-а=[]
-end if
-end if
-else if (в=="index") then
-Р=Р.value
-if O.ExpressionManager.isInstanceOf(Р) then
-Н=Р.get(ϰ)
-а.push(Н)
-else
-а.push(Р)
-end if
-else if (в=="slice") then
-if not ϸ then
-ϸ=ϰ.get(а)
-а=[]
-else if ((typeof(ϸ)!="list") and (typeof(ϸ)!="string")) then
-ϰ.dbgr.raise({"type":"PathExpression","description":"Invalid type for slice","instance":O,"handle":ϸ})
-end if
-ϱ=Р.left
-if O.ExpressionManager.isInstanceOf(ϱ) then
-ϱ=ϱ.get(ϰ)
-end if
-ϴ=Р.right
-if O.ExpressionManager.isInstanceOf(ϴ) then
-ϴ=ϴ.get(ϰ)
-end if
-ϸ=ϸ[ϱ:ϴ]
-else
-ϸ=Р
-end if
-б=(б+1)
-Р=О.pull
-end while
-return {"classID":"pathResult","handle":ϸ,"path":а}
-end function
-Ѐ={"instance":O,"eval":@Ϯ,"opc":ϰ}
-ϰ.dbgr.debug({"type":"PathExpression","description":"get expr","line":O.ast.line,"expr":O.expr})
-з=Ѐ.eval(O.expr)
-ϰ.dbgr.debug({"type":"PathExpression","description":"result","result":з,"parent":ϭ})
-if not ϭ then
-Ϲ=typeof(з.handle)
-if (Ϲ!="null") then
-if (з.path.len==0) then
-if (typeof(@з.handle)=="operationContext") then
-return з.handle.createProxy
-end if
-return з.handle
-end if
-З=null
-ϰ.dbgr.debug({"type":"PathExpression","description":"get callable","callable":Ϲ})
-if (Ϲ=="proxyScope") then
-и=O.ScopeRegistry.get(з.handle.id)
-З=и.getCallable(з.path)
-else
-З=O.dynResolve.getCallable(з.handle,з.path)
-end if
-ϰ.dbgr.debug({"type":"PathExpression","description":"is path with handle callable","callable":З})
-if (typeof(@З.origin)=="proxyFunction") then
-З.origin=O.FunctionRegistry.get(З.origin.id)
-end if
-if O.OperationManager.isInstanceOf(@З.origin) then
-return З.origin.run(ϰ)
-else if (typeof(@З.origin)!="function") then
-return З.origin
-end if
-return O.dynApply.apply(@З.origin,null,З.context)
-end if
-Н=ϰ.get(з.path)
-ϰ.dbgr.debug({"type":"PathExpression","description":"get with opc","value":@Н,"opc":ϰ})
-if (typeof(@Н)=="proxyFunction") then
-Н=O.FunctionRegistry.get(Н.id)
-end if
-й=typeof(@Н)
-if (й=="function") then
-З=ϰ.getCallable(з.path)
-return O.dynApply.apply(@З.origin,null,З.context)
-else if O.OperationManager.isInstanceOf(Н) then
-return Н.run(ϰ)
-else if ((й=="operationContext") or (й=="scope")) then
-return Н.createProxy
-end if
-return Н
-end if
-return з
-end function
-к={}
-ӟ.add("ArgumentOperation",к)
-к.dynResolve=Х
-к.ExpressionManager=e
-к.OperationManager=ӟ
-к.constructor=function(s,t)
-O=self
-O.classID="ArgumentOperation"
-O.ast=s
-O.stack=[]
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-к.run=function(Ϭ)
-O=self
-Ϭ.dbgr.raise(("Unexpected run call on "+typeof(O)))
-end function
-к.get=function(Ϭ)
-O=self
-л=O.stack
-Ќ=[]
-for н in O.stack
-о=н.path.get(Ϭ,O)
-if (н.defaultValue!=null) then
-if (O.ExpressionManager.isInstanceOf(н.defaultValue) or O.OperationManager.isInstanceOf(н.defaultValue)) then
-п=н.get(Ϭ,O)
-else
-п=н.defaultValue
-end if
-Ϭ.set(о.path,п)
-end if
-Ќ.push(о.path)
-end for
-return Ќ
-end function
-р={}
-ӟ.add("BodyOperation",р)
-р.dynResolve=Х
-р.ExpressionManager=e
-р.OperationManager=ӟ
-р.constructor=function(s,t)
-O=self
-O.classID="BodyOperation"
-O.ast=s
-O.stack=[]
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-р.run=function(Ϭ)
-O=self
-с={}
-с.is=function()
-return false
-end function
-if (Ϭ.type=="LOOP") then
-с.context=Ϭ.getMemory("loopContext")
-с.is=function()
-return (self.context.isBreak or self.context.isContinue)
-end function
-else if (Ϭ.type=="FUNCTION") then
-с.context=Ϭ.getMemory("functionContext")
-с.is=function()
-return self.context.isReturn
-end function
-end if
-for н in O.stack
-if Ϭ.dbgr.getBreakPoint then
-Ϭ.dbgr.interact(Ϭ,н.ast.line)
-end if
-if O.ExpressionManager.isInstanceOf(н) then
-н.get(Ϭ)
-else
-н.run(Ϭ)
-end if
-if с.is then
-break
-end if
-end for
-end function
-ш={}
-ӟ.add("BreakOperation",ш)
-ш.constructor=function(s,t)
-O=self
-O.classID="BreakOperation"
-O.ast=s
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-ш.run=function(Ϭ)
-O=self
-щ=Ϭ.getMemory("loopContext")
-щ.isBreak=true
-end function
-ъ={}
-ӟ.add("ContinueOperation",ъ)
-ъ.constructor=function(s,t)
-O=self
-O.classID="ContinueOperation"
-O.ast=s
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-ъ.run=function(Ϭ)
-O=self
-щ=Ϭ.getMemory("loopContext")
-щ.isContinue=true
-end function
-ы={}
-ӟ.add("DebuggerOperation",ы)
-ы.constructor=function(s,t)
-O=self
-O.classID="DebuggerOperation"
-O.ast=s
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-ы.run=function(Ϭ)
-O=self
-Ϭ.dbgr.setBreakPoint(true)
-Ϭ.dbgr.interact(Ϭ,O.ast.line)
-end function
-э={}
-ӟ.add("ElseIfOperation",э)
-э.constructor=function(s,t)
-O=self
-O.classID="ElseIfOperation"
-O.ast=s
-O.condition=null
-O.body=null
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-э.run=function(Ϭ)
-O=self
-Ϭ.dbgr.raise(("Unexpected run call on "+typeof(O)))
-end function
-ѐ={}
-ӟ.add("ElseOperation",ѐ)
-ѐ.constructor=function(s,t)
-O=self
-O.classID="ElseOperation"
-O.ast=s
-O.body=null
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-ё={}
-ӟ.add("ForOperation",ё)
-ё.constructor=function(s,t)
-O=self
-O.classID="ForOperation"
-O.ast=s
-O.variable=null
-O.iterator=null
-O.body=null
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-ё.run=function(Ϭ)
-O=self
-ϰ=Ϭ.fork("LOOP","TEMPORARY")
-y=O.variable.get(ϰ,O)
-ђ=O.iterator.get(ϰ)
-щ={"isBreak":false,"isContinue":false}
-ϰ.setMemory("loopContext",щ)
-for Н in ђ
-щ.isContinue=false
-ϰ.set(y.path,Н)
-O.body.run(ϰ)
-if щ.isContinue then
-continue
-else if щ.isBreak then
-break
-end if
-end for
-end function
-ѓ={}
-ӟ.add("FunctionOperation",ѓ)
-ѓ.Base=ѓ
-ѓ.FunctionRegistry=n
-ѓ.constructor=function(s,t)
-O=self
-O.id=md5(str(time))
-O.classID="FunctionOperation"
-O.ast=s
-O.args=null
-O.body=null
-O.isOperation=true
-O.context=null
-O.isFunction=true
-O.cpsWalker=t
-O.FunctionRegistry.add(O)
-return O
-end function
-ѓ.getType=function()
-return "function"
-end function
-ѓ.fork=function(Ͽ)
-O=self
-ї=(new O.Base).constructor(O.ast,O.cpsWalker)
-ї.args=O.args
-ї.body=O.body
-ї.context=Ͽ
-return ї
-end function
-ѓ.createProxy=function()
-O=self
-return {"classID":"proxyFunction","id":O.id}
-end function
-ѓ.get=function(Ϭ)
-return self
-end function
-ѓ.toString=function()
-return "Function"
-end function
-ѓ.run=function(Ϭ)
-O=self
-ϰ=Ϭ.fork("FUNCTION","DEFAULT")
-ј=Ϭ.getMemory("args")
-Ќ=O.args.get(ϰ)
-љ={}
-Б=null
-г={"value":Б,"isReturn":false,"context":O.context}
-ϰ.dbgr.debug({"type":"FunctionOperation","description":"prepare arguments","args":Ќ})
-ϰ.setMemory("functionContext",г)
-Ю=0
-њ=Ќ.len
-while (Ю<њ)
-if ј.hasIndex(Ю) then
-ϰ.set(Ќ[Ю],ј[Ю])
-end if
-Ю=(Ю+1)
-end while
-ϰ.dbgr.debug({"type":"FunctionOperation","description":"execute body","opc":ϰ})
-O.body.run(ϰ)
-return г.value
-end function
-ћ={}
-ӟ.add("IfStatementOperation",ћ)
-ћ.constructor=function(s,t)
-O=self
-O.classID="IfStatementOperation"
-O.ast=s
-O.clauses=[]
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-ћ.run=function(Ϭ)
-O=self
-ќ=O.clauses
-for ѝ in ќ
-ў=typeof(ѝ)
-if ((ў=="IfOperation") or (ў=="ElseIfOperation")) then
-џ=ѝ.condition.get(Ϭ)
-if џ then
-ѝ.body.run(Ϭ)
-return 
-end if
-else if (ў=="ElseOperation") then
-ѝ.body.run(Ϭ)
-return 
-else
-Ϭ.dbgr.raise({"type":"IfStatementOperation","description":"Invalid operation in if statement","clause":ѝ})
-end if
-end for
-end function
-Ѡ={}
-ӟ.add("IfOperation",Ѡ)
-Ѡ.constructor=function(s,t)
-O=self
-O.classID="IfOperation"
-O.ast=s
-O.condition=null
-O.body=null
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-Ѡ.run=function(Ϭ)
-O=self
-Ϭ.dbgr.raise(("Unexpected run call on "+typeof(O)))
-end function
-ѡ={}
-ӟ.add("NewOperation",ѡ)
-ѡ.dynResolve=Х
-ѡ.ExpressionManager=e
-ѡ.OperationManager=ӟ
-ѡ.constructor=function(s,t)
-O=self
-O.classID="NewOperation"
-O.ast=s
-O.arg=null
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-ѡ.run=function(Ϭ)
-O=self
-Ϭ.dbgr.raise(("Unexpected run call on "+typeof(O)))
-end function
-ѡ.get=function(Ϭ)
-O=self
-Њ=O.arg
-Ϭ.dbgr.debug({"type":"NewOperation","description":"start","arg":@Њ})
-if O.ExpressionManager.isInstanceOf(Њ) then
-Њ=Њ.get(Ϭ)
-end if
-Ѣ=typeof(@Њ)
-if ((((Ѣ=="string") or (Ѣ=="number")) or (Ѣ=="boolean")) or (Ѣ=="list")) then
-Ϭ.dbgr.raise({"type":"NewOperation","description":"Unexpected type for new operator","arg":Њ})
-end if
-ѣ={}
-Ϭ.dbgr.debug({"type":"NewOperation","description":"start creation","arg":@Њ})
-for Ѝ in @Њ
-if (typeof(Ѝ.value)=="FunctionOperation") then
-ѣ[Ѝ.key]=Ѝ.value.fork(ѣ)
-else
-ѣ[Ѝ.key]=Ѝ.value
-end if
-end for
-return (new ѣ)
-end function
-Ѥ={}
-ӟ.add("NotOperation",Ѥ)
-Ѥ.dynResolve=Х
-Ѥ.ExpressionManager=e
-Ѥ.OperationManager=ӟ
-Ѥ.constructor=function(s,t)
-O=self
-O.classID="NotOperation"
-O.ast=s
-O.arg=null
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-Ѥ.run=function(Ϭ)
-O=self
-Ϭ.dbgr.raise(("Unexpected run call on "+typeof(O)))
-end function
-Ѥ.get=function(Ϭ)
-O=self
-Њ=O.arg
-if O.ExpressionManager.isInstanceOf(Њ) then
-Њ=Њ.get(Ϭ)
-end if
-return not Њ
-end function
-ѥ={}
-ӟ.add("ReferenceOperation",ѥ)
-ѥ.dynResolve=Х
-ѥ.ExpressionManager=e
-ѥ.OperationManager=ӟ
-ѥ.constructor=function(s,t)
-O=self
-O.classID="ReferenceOperation"
-O.ast=s
-O.arg=null
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-ѥ.run=function(Ϭ)
-O=self
-Њ=@O.arg
-Ѧ=null
-if O.ExpressionManager.isInstanceOf(@Њ) then
-Ѧ=Њ.get(Ϭ)
-else
-Ϭ.dbgr.raise(["Unexpected reference",O.arg].join(" "))
-return null
-end if
-return @Ѧ
-end function
-ѥ.get=function(Ϭ)
-O=self
-Њ=@O.arg
-if (O.ExpressionManager.isInstanceOf(@Њ) or O.OperationManager.isInstanceOf(@Њ)) then
-Њ=Њ.get(Ϭ,O)
-else
-Ϭ.dbgr.raise(["Unexpected reference",O.arg].join(" "))
-return null
-end if
-if (typeof(@Њ)!="pathResult") then
-Ϭ.dbgr.raise(["Unexpected reference result",@Њ].join(" "))
-return @Њ
-end if
-Ϭ.dbgr.debug({"type":"ReferenceOperation","description":"handle","arg":@Њ})
-ϸ=Њ.handle
-Ϲ=typeof(@ϸ)
-Ϭ.dbgr.debug({"type":"ReferenceOperation","description":"handle type after resolve","handleType":Ϲ})
-if (Ϲ!="null") then
-if (((Ϲ!="string") and (Ϲ!="number")) and (Ϲ!="boolean")) then
-Ѧ=O.dynResolve.get(@ϸ,Њ.path)
-Ϭ.dbgr.debug({"type":"ReferenceOperation","description":"returns resolved value of handle","resolvedValue":@Ѧ})
-if (typeof(@Ѧ)=="FunctionOperation") then
-return Ѧ.createProxy
-else if (O.ExpressionManager.isInstanceOf(@Ѧ) or O.OperationManager.isInstanceOf(@Ѧ)) then
-return Ѧ.get(Ϭ)
-end if
-return @Ѧ
-end if
-Ϭ.dbgr.raise({"type":"ReferenceOperation","description":"Unexpected handle in reference statement","handle":ϸ})
-return ϸ
-end if
-Ѧ=Ϭ.get(Њ.path)
-ϰ.dbgr.debug({"type":"ReferenceOperation","description":"get with opc","value":@Ѧ,"opc":Ϭ})
-if (typeof(@Ѧ)=="FunctionOperation") then
-return Ѧ.createProxy
-else if (O.ExpressionManager.isInstanceOf(@Ѧ) or O.OperationManager.isInstanceOf(@Ѧ)) then
-return Ѧ.get(Ϭ)
-end if
-return @Ѧ
-end function
-ѧ={}
-ӟ.add("ReturnOperation",ѧ)
-ѧ.ExpressionManager=e
-ѧ.OperationManager=ӟ
-ѧ.constructor=function(s,t)
-O=self
-O.classID="ReturnOperation"
-O.ast=s
-O.arg=null
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-ѧ.run=function(Ϭ)
-O=self
-г=Ϭ.getMemory("functionContext")
-Њ=O.arg
-if O.ExpressionManager.isInstanceOf(Њ) then
-Њ=O.arg.get(Ϭ)
-else if O.OperationManager.isInstanceOf(Њ) then
-Њ=O.arg.get(Ϭ)
-end if
-г.value=Њ
-г.isReturn=true
-end function
-Ѩ={}
-ӟ.add("TopOperation",Ѩ)
-Ѩ.constructor=function()
-O=self
-O.classID="TopOperation"
-O.body=null
-O.isOperation=true
-return O
-end function
-Ѩ.run=function(Ϭ,ѩ)
-O=self
-if not ѩ then
-ϰ=Ϭ.fork("GLOBAL","DEFAULT")
-ϰ.extend({"globals":ϰ.createProxy})
-end if
-O.body.run(ϰ)
-return ϰ
-end function
-ѫ={}
-e.add("ImportCodeExpression",ѫ)
-ѫ.CodeParser=Ч
-ѫ.TopOperation=Ѩ
-ѫ.constructor=function(s,t)
-O=self
-u=function(І)
-O=self
-Ѭ=І.filepath.value
-ѭ=get_shell.host_computer.File(Ѭ)
-if not ѭ then
-O.cpsWalker.exception((("File "+Ѭ)+" cannot be found."))
-return null
-else if not ѭ.has_permission("r") then
-O.cpsWalker.exception((("Has no permission to read "+Ѭ)+"."))
-return null
-else if ѭ.is_binary then
-O.cpsWalker.exception((("File "+Ѭ)+" is a binary."))
-return null
-else if ѭ.is_folder then
-O.cpsWalker.exception((("File "+Ѭ)+" is a folder."))
-return null
-end if
-Ә=(new O.CodeParser).constructor(ѭ.get_content)
-ѵ=Ә.parseChunk
-if Ә.hasError then
-O.cpsWalker.exception(Ә.getErrors.join(char(10)))
-return null
-end if
-ѷ=(new O.TopOperation).constructor
-ѷ.body=O.cpsWalker.visit(ѵ)
-return ѷ
-end function
-Ϩ={"cpsWalker":t,"build":@u,"CodeParser":O.CodeParser,"TopOperation":O.TopOperation}
-O.classID="ImportCodeExpression"
-O.body=null
-O.isExpression=true
-O.ast=s
-O.cpsWalker=t
-O.expr=Ϩ.build(s)
-return O
-end function
-ѫ.get=function(Ϭ,ϭ)
-O=self
-if (O.expr==null) then
-Ϭ.dbgr.raise((("Import "+O.ast.filepath.value)+" is not available."))
-return null
-end if
-return O.expr.run(Ϭ,true)
-end function
-Ѹ={}
-ӟ.add("WhileOperation",Ѹ)
-Ѹ.ExpressionManager=e
-Ѹ.OperationManager=ӟ
-Ѹ.constructor=function(s,t)
-O=self
-O.classID="WhileOperation"
-O.ast=s
-O.condition=null
-O.body=null
-O.isOperation=true
-O.cpsWalker=t
-return O
-end function
-Ѹ.run=function(Ϭ)
-O=self
-ϰ=Ϭ.fork("LOOP","TEMPORARY")
-щ={"isBreak":false,"isContinue":false}
-ю={"instance":O,"opc":ϰ}
-ю.is=function()
-O=self.instance
-if O.ExpressionManager.isInstanceOf(O.condition) then
-return O.condition.get(self.opc)
-end if
-return O.condition
-end function
-ϰ.setMemory("loopContext",щ)
-while ю.is
-щ.isContinue=false
-O.body.run(ϰ)
-if щ.isContinue then
-continue
-else if щ.isBreak then
-break
-end if
-end while
-end function
-ѹ={}
-ѹ.AssignmentStatement=function(t,Ѝ)
-Ԁ=t.ExpressionManager.get("AssignExpression")
-return (new Ԁ).constructor(Ѝ,t)
-end function
-ѹ.MemberExpression=function(t,Ѝ)
-Ъ=t.ExpressionManager.get("PathExpression")
-return (new Ъ).constructor(Ѝ,t)
-end function
-ѹ.FunctionDeclaration=function(t,Ѝ)
-ѓ=t.OperationManager.get("FunctionOperation")
-к=t.OperationManager.get("ArgumentOperation")
-р=t.OperationManager.get("BodyOperation")
-ҥ=(new ѓ).constructor(Ѝ,t)
-Ќ=(new к).constructor(Ѝ.parameters,t)
-я=(new р).constructor(Ѝ.body,t)
-for Ѿ in Ѝ.parameters
-϶=t.visit(Ѿ.path)
-п=t.visit(Ѿ.defaultValue)
-Ќ.stack.push({"classID":"arg","path":϶,"defaultValue":п})
-end for
-for ѿ in Ѝ.body
-я.stack.push(t.visit(ѿ))
-end for
-ҥ.args=Ќ
-ҥ.body=я
-return ҥ
-end function
-ѹ.MapConstructorExpression=function(t,Ѝ)
-Ш=t.ExpressionManager.get("MapExpression")
-return (new Ш).constructor(Ѝ,t)
-end function
-ѹ.Identifier=function(t,Ѝ)
-Ъ=t.ExpressionManager.get("PathExpression")
-return (new Ъ).constructor(Ѝ,t)
-end function
-ѹ.ReturnStatement=function(t,Ѝ)
-ѧ=t.OperationManager.get("ReturnOperation")
-ҥ=(new ѧ).constructor(Ѝ,t)
-ҥ.arg=t.visit(Ѝ.arguments.pull)
-return ҥ
-end function
-ѹ.NumericLiteral=function(t,Ѝ)
-return Ѝ.value
-end function
-ѹ.WhileStatement=function(t,Ѝ)
-Ѹ=t.OperationManager.get("WhileOperation")
-р=t.OperationManager.get("BodyOperation")
-ҥ=(new Ѹ).constructor(Ѝ,t)
-я=(new р).constructor(Ѝ.body,t)
-ҥ.condition=t.visit(Ѝ.condition)
-for ѿ in Ѝ.body
-я.stack.push(t.visit(ѿ))
-end for
-ҥ.body=я
-return ҥ
-end function
-ѹ.StringLiteral=function(t,Ѝ)
-return Ѝ.value
-end function
-ѹ.IndexExpression=function(t,Ѝ)
-Ъ=t.ExpressionManager.get("PathExpression")
-return (new Ъ).constructor(Ѝ,t)
-end function
-ѹ.IfShortcutStatement=function(t,Ѝ)
-ћ=t.OperationManager.get("IfStatementOperation")
-ҥ=(new ћ).constructor(Ѝ,t)
-for ҈ in Ѝ.clauses
-ҥ.clauses.push(t.visit(҈))
-end for
-return ҥ
-end function
-ѹ.IfShortcutClause=function(t,Ѝ)
-Ѡ=t.OperationManager.get("IfOperation")
-р=t.OperationManager.get("BodyOperation")
-ҥ=(new Ѡ).constructor(Ѝ,t)
-я=(new р).constructor(Ѝ.statement,t)
-ҥ.condition=t.visit(Ѝ.condition)
-я.stack.push(t.visit(Ѝ.statement))
-ҥ.body=я
-return ҥ
-end function
-ѹ.ElseifShortcutClause=function(t,Ѝ)
-э=t.OperationManager.get("ElseIfOperation")
-р=t.OperationManager.get("BodyOperation")
-ҥ=(new э).constructor(Ѝ,t)
-я=(new р).constructor(Ѝ.statement,t)
-ҥ.condition=t.visit(Ѝ.condition)
-я.stack.push(t.visit(Ѝ.statement))
-ҥ.body=я
-return ҥ
-end function
-ѹ.ElseShortcutClause=function(t,Ѝ)
-ѐ=t.OperationManager.get("ElseOperation")
-р=t.OperationManager.get("BodyOperation")
-ҥ=(new ѐ).constructor(Ѝ,t)
-я=(new р).constructor(Ѝ.statement,t)
-я.stack.push(t.visit(Ѝ.statement))
-ҥ.body=я
-return ҥ
-end function
-ѹ.NilLiteral=function(t,Ѝ)
-return null
-end function
-ѹ.ForGenericStatement=function(t,Ѝ)
-ё=t.OperationManager.get("ForOperation")
-р=t.OperationManager.get("BodyOperation")
-ҥ=(new ё).constructor(Ѝ,t)
-я=(new р).constructor(Ѝ.body,t)
-ҥ.variable=t.visit(Ѝ.variable)
-ҥ.iterator=t.visit(Ѝ.iterator)
-for ѿ in Ѝ.body
-я.stack.push(t.visit(ѿ))
-end for
-ҥ.body=я
-return ҥ
-end function
-ѹ.IfStatement=function(t,Ѝ)
-ћ=t.OperationManager.get("IfStatementOperation")
-ҥ=(new ћ).constructor(Ѝ,t)
-for ҈ in Ѝ.clauses
-ҥ.clauses.push(t.visit(҈))
-end for
-return ҥ
-end function
-ѹ.IfClause=function(t,Ѝ)
-Ѡ=t.OperationManager.get("IfOperation")
-р=t.OperationManager.get("BodyOperation")
-ҥ=(new Ѡ).constructor(Ѝ,t)
-я=(new р).constructor(Ѝ.body,t)
-ҥ.condition=t.visit(Ѝ.condition)
-for ѿ in Ѝ.body
-я.stack.push(t.visit(ѿ))
-end for
-ҥ.body=я
-return ҥ
-end function
-ѹ.ElseifClause=function(t,Ѝ)
-э=t.OperationManager.get("ElseIfOperation")
-р=t.OperationManager.get("BodyOperation")
-ҥ=(new э).constructor(Ѝ,t)
-я=(new р).constructor(Ѝ.body,t)
-ҥ.condition=t.visit(Ѝ.condition)
-for ѿ in Ѝ.body
-я.stack.push(t.visit(ѿ))
-end for
-ҥ.body=я
-return ҥ
-end function
-ѹ.ElseClause=function(t,Ѝ)
-ѐ=t.OperationManager.get("ElseOperation")
-р=t.OperationManager.get("BodyOperation")
-ҥ=(new ѐ).constructor(Ѝ,t)
-я=(new р).constructor(Ѝ.body,t)
-for ѿ in Ѝ.body
-я.stack.push(t.visit(ѿ))
-end for
-ҥ.body=я
-return ҥ
-end function
-ѹ.NegationExpression=function(t,Ѝ)
-Ѥ=t.OperationManager.get("NotOperation")
-ҥ=(new Ѥ).constructor(Ѝ,t)
-ҥ.arg=t.visit(Ѝ.argument)
-return ҥ
-end function
-ѹ.ContinueStatement=function(t,Ѝ)
-ъ=t.OperationManager.get("ContinueOperation")
-return (new ъ).constructor(Ѝ,t)
-end function
-ѹ.BreakStatement=function(t,Ѝ)
-ш=t.OperationManager.get("BreakOperation")
-return (new ш).constructor(Ѝ,t)
-end function
-ѹ.CallExpression=function(t,Ѝ)
-Ћ=t.ExpressionManager.get("CallExpression")
-return (new Ћ).constructor(Ѝ,t)
-end function
-ѹ.CallStatement=function(t,Ѝ)
-Ћ=t.ExpressionManager.get("CallExpression")
-return (new Ћ).constructor(Ѝ,t)
-end function
-ѹ.ImportCodeExpression=function(t,Ѝ)
-ѫ=t.ExpressionManager.get("ImportCodeExpression")
-return (new ѫ).constructor(Ѝ,t)
-end function
-ѹ.FeatureDebuggerExpression=function(t,Ѝ)
-ы=t.OperationManager.get("DebuggerOperation")
-return (new ы).constructor(Ѝ,t)
-end function
-ѹ.ListConstructorExpression=function(t,Ѝ)
-Л=t.ExpressionManager.get("ListExpression")
-return (new Л).constructor(Ѝ,t)
-end function
-ѹ.BooleanLiteral=function(t,Ѝ)
-return Ѝ.value
-end function
-ѹ.EmptyExpression=function(t,Ѝ)
-return 
-end function
-ѹ.BinaryExpression=function(t,Ѝ)
-У=t.ExpressionManager.get("LogicalAndBinaryExpression")
-return (new У).constructor(Ѝ,t)
-end function
-ѹ.BinaryNegatedExpression=function(t,Ѝ)
-Ѓ=t.ExpressionManager.get("BinaryNegatedExpression")
-return (new Ѓ).constructor(Ѝ,t)
-end function
-ѹ.LogicalExpression=function(t,Ѝ)
-У=t.ExpressionManager.get("LogicalAndBinaryExpression")
-return (new У).constructor(Ѝ,t)
-end function
-ѹ.UnaryExpression=function(t,Ѝ)
-ҥ=null
-ѥ=t.OperationManager.get("ReferenceOperation")
-ѡ=t.OperationManager.get("NewOperation")
-if ("@"==Ѝ.operator) then
-ҥ=(new ѥ).constructor(Ѝ,t)
-else if ("new"==Ѝ.operator) then
-ҥ=(new ѡ).constructor(Ѝ,t)
-end if
-ҥ.arg=t.visit(Ѝ.argument)
-return ҥ
-end function
-ѹ.Chunk=function(t,Ѝ)
-р=t.OperationManager.get("BodyOperation")
-ҥ=(new р).constructor(Ѝ,t)
-for ѿ in Ѝ.body
-ҥ.stack.push(t.visit(ѿ))
-end for
-return ҥ
-end function
-Ҡ={}
-Ҡ.defaultMapper=ѹ
-Ҡ.OperationManager=ӟ
-Ҡ.ExpressionManager=e
-Ҡ.constructor=function()
-O=self
-O.mapper=O.defaultMapper
-O.status={"errors":[]}
-return O
-end function
-Ҡ.visit=function(Ҥ)
-O=self
-if (Ҥ==null) then
-return 
-end if
-if (Ҥ.type==null) then
-O.exception("Unexpected as type")
-return 
-end if
-if not O.mapper.hasIndex(Ҥ.type) then
-O.exception(("Type does not exist "+Ҥ.type))
-return 
-end if
-Ҧ=@O.mapper[Ҥ.type]
-Б=Ҧ(O,Ҥ)
-return Б
-end function
-Ҡ.exception=function(ҧ)
-O=self
-Ҩ=("[CPSEvaluatorWalker] Error: "+ҧ)
-debug(Ҩ)
-O.status.errors.push(Ҩ)
-return null
-end function
-Ҡ.hasError=function()
-return (self.status.errors.len>0)
-end function
-Ҡ.getErrors=function()
-return self.status.errors
-end function
-Ҫ={}
-Ҫ.TopOperation=Ѩ
-Ҫ.CPSEvaluatorWalker=Ҡ
-Ҫ.constructor=function(ѵ)
-O=self
-O.chunk=ѵ
-O.status={"errors":[]}
-return O
-end function
-Ҫ.hasError=function()
-return (self.status.errors.len>0)
-end function
-Ҫ.getErrors=function()
-return self.status.errors
-end function
-Ҫ.digest=function()
-O=self
-t=(new O.CPSEvaluatorWalker).constructor
-ҫ=t.visit(O.chunk)
-if t.hasError then
-O.status.errors=(O.status.errors+t.getErrors)
-return null
-end if
-ѷ=(new O.TopOperation).constructor
-ѷ.body=ҫ
-return ѷ
-end function
-Ҭ={}
-Ҭ.dynResolve=Х
-Ҭ.ScopeRegistry=q
-Ҭ.constructor=function(Ͽ)
-O=self
-O.id=md5(str(time))
-O.classID="scope"
-O.isScope=true
-O.context=Ͽ
-O.refs={}
-O.ScopeRegistry.add(O)
-return O
-end function
-Ҭ.valueOf=function()
-return self.refs
-end function
-Ҭ.createProxy=function()
-O=self
-return {"classID":"proxyScope","id":O.id}
-end function
-Ҭ.extend=function(Щ)
-O=self
-if (Щ==null) then
-Щ={}
-end if
-for и in Щ
-O.refs[и.key]=@и.value
-end for
-return O
-end function
-Ҭ.set=function(϶,Н)
-O=self
-if (typeof(϶)=="string") then
-϶=϶.split(".")
-end if
-ү=([]+϶)
-X=O.refs
-Ұ=ү.pop
-Р=ү.pull
-Й=X
-if (Р!=null) then
-if (typeof(O.dynResolve.get(@Й,Р))!="null") then
-Й=@Й[Р]
-е=typeof(@Й)
-if ((е=="list") or (е=="map")) then
-return O.dynResolve.set(@Й,(ү+[Ұ]),@Н)
-else if (е=="scope") then
-return Й.set((ү+[Ұ]),@Н)
-end if
-else if (O.dynResolve.get(O,"context.previous") and not O.dynResolve.get(O,"context.previous.isProteced")) then
-return O.context.previous.set(϶,@Н)
-else if (ү.len>0) then
-exit(("Cannot set path "+϶.join(".")))
-end if
-end if
-е=typeof(@Й)
-if (((((@Й!=null) and (е!="boolean")) and (е!="string")) and (е!="number")) and (е!="null")) then
-Й[Ұ]=@Н
-else
-exit(("Cannot set path "+϶.join(".")))
-end if
-end function
-Ҭ.get=function(϶)
-O=self
-if (typeof(϶)=="string") then
-϶=϶.split(".")
-end if
-ү=([]+϶)
-X=O.refs
-Р=ү.pull
-Й=X
-if (Р!=null) then
-if (typeof(O.dynResolve.get(@Й,Р))!="null") then
-Й=@Й[Р]
-е=typeof(@Й)
-if (ү.len>0) then
-if (е=="scope") then
-return Й.get(ү)
-else if ((е!="number") or (е!="boolean")) then
-return O.dynResolve.get(@Й,ү)
-end if
-end if
-else if (O.context.previous!=null) then
-return O.context.previous.get(϶)
-else
-Й=null
-end if
-end if
-return @Й
-end function
-Ҭ.getCallable=function(϶)
-O=self
-if (typeof(϶)=="string") then
-϶=϶.split(".")
-end if
-ү=([]+϶)
-X=O.refs
-Р=ү.pull
-Й=X
-Ͽ=null
-if (Р!=null) then
-if (typeof(O.dynResolve.get(@Й,Р))!="null") then
-Ͽ=@Й
-Й=@Й[Р]
-е=typeof(@Й)
-if (е=="scope") then
-return Й.getCallable(ү)
-else if ((е!="number") or (е!="boolean")) then
-return O.dynResolve.getCallable(@Й,ү)
-end if
-else if O.dynResolve.get(O,"context.previous") then
-return O.context.previous.getCallable(϶)
-else
-Й=null
-end if
-end if
-return {"origin":@Й,"context":Ͽ}
-end function
-ҳ={}
-ҳ.TYPE={"API":"API","GLOBAL":"GLOBAL","FUNCTION":"FUNCTION","LOOP":"LOOP","MAP":"MAP","CALL":"CALL"}
-ҳ.STATE={"TEMPORARY":"TEMPORARY","DEFAULT":"DEFAULT"}
-ҳ.Base=ҳ
-ҳ.Scope=Ҭ
-ҳ.constructor=function(Ҷ,ҷ=false)
-O=self
-O.classID="operationContext"
-O.previous=null
-O.type=O.TYPE.API
-O.state=O.STATE.DEFAULT
-O.scope=(new O.Scope).constructor(O)
-O.isProteced=ҷ
-O.dbgr=Ҷ
-O.memory={}
-return O
-end function
-ҳ.valueOf=function()
-return self.scope.valueOf
-end function
-ҳ.createProxy=function()
-return self.scope.createProxy
-end function
-ҳ.extend=function(Щ)
-O=self
-if (O.state==O.STATE.TEMPORARY) then
-O.previous.extend(Щ)
-else
-O.scope.extend(Щ)
-end if
-return O
-end function
-ҳ.set=function(϶,Н)
-O=self
-if (O.state==O.STATE.TEMPORARY) then
-O.previous.set(϶,Н)
-else
-O.scope.set(϶,Н)
-end if
-return O
-end function
-ҳ.get=function(϶)
-O=self
-if (O.state==O.STATE.TEMPORARY) then
-return O.previous.get(϶)
-end if
-return O.scope.get(϶)
-end function
-ҳ.setMemory=function(g,Н)
-O=self
-O.memory[g]=Н
-return O
-end function
-ҳ.getMemory=function(g)
-O=self
-if O.memory.hasIndex(g) then
-return O.memory[g]
-end if
-return null
-end function
-ҳ.getCallable=function(϶)
-O=self
-if (O.state==O.STATE.TEMPORARY) then
-return O.previous.getCallable(϶)
-end if
-return O.scope.getCallable(϶)
-end function
-ҳ.fork=function(ӝ,ҹ)
-O=self
-ϰ=(new O.Base).constructor(O.dbgr)
-ϰ.previous=O
-ϰ.type=ӝ
-ϰ.state=ҹ
-if ((O.type==O.TYPE.FUNCTION) or (O.type==O.TYPE.GLOBAL)) then
-ϰ.extend({"locals":ϰ.createProxy})
-end if
-if (ӝ!=O.TYPE.FUNCTION) then
-if (ӝ!=O.TYPE.LOOP) then
-ϰ.setMemory("loopContext",O.getMemory("loopContext"))
-end if
-ϰ.setMemory("functionContext",O.getMemory("functionContext"))
-end if
-return ϰ
-end function
-Ӏ={}
-Ӏ.CodeParser=Ч
-Ӏ.CPSEvaluatorWalker=Ҡ
-Ӏ.TopOperation=Ѩ
-Ӏ.Base=Ӏ
-Ӏ.constructor=function(ϳ,debug)
-O=self
-O.customRaise=ϳ
-O.customDebug=debug
-O.breakpoint=false
-O.maxLevel=4
-return O
-end function
-Ӏ.raise=function(Ӆ)
-O=self
-if (@O.customRaise!=null) then
-O.customRaise(Ӆ)
-return null
-end if
-print("[ERROR]:")
-O.inspect(Ӆ)
-return null
-end function
-Ӏ.debug=function(Ӆ)
-O=self
-if (@O.customDebug!=null) then
-O.customDebug(Ӆ)
-return null
-end if
-if debug("[DEBUG]") then
-O.inspect(Ӆ)
-end if
-return null
-end function
-Ӏ.setBreakPoint=function(Ӈ)
-O=self
-O.breakpoint=Ӈ
-return O
-end function
-Ӏ.getBreakPoint=function()
-O=self
-return O.breakpoint
-end function
-Ӏ.inspectIterator=function(g,Н,Ӊ)
-O=self
-й=typeof(@Н)
-ӊ=(Ӊ+1)
-Ӌ=(char(9)*(Ӊ+1))
-if (Ӊ==O.maxLevel) then
-print((Ӌ+"[REDACTED]"))
-return null
-end if
-if ((((й=="string") or (й=="boolean")) or (й=="number")) or (й=="function")) then
-print(((((((Ӌ+"[")+й)+"] <b>")+g)+"</b>: ")+@Н))
-else if (й=="null") then
-print((((((Ӌ+"[")+й)+"] <b>")+g)+"</b>: null"))
-else if (й=="list") then
-print((((((Ӌ+"[")+й)+"] <b>")+g)+"</b>:"))
-Ю=0
-for Ѝ in Н
-O.inspectIterator(Ю,@Ѝ,ӊ)
-Ю=(Ю+1)
-end for
-else if (й=="map") then
-print((((((Ӌ+"[")+й)+"] <b>")+g)+"</b>:"))
-for Ѝ in Н
-O.inspectIterator(Ѝ.key,@Ѝ.value,ӊ)
-end for
-else
-print(((((((Ӌ+"[")+й)+"] <b>")+g)+"</b>: ")+@Н))
-end if
-return null
-end function
-Ӏ.inspect=function(k)
-O=self
-Ю=0
-for Ѝ in k
-O.inspectIterator(Ѝ.key,@Ѝ.value,0)
-Ю=(Ю+1)
-end for
-if (Ю==0) then
-print("{}")
-end if
-return null
-end function
-Ӏ.inspectOperationContext=function(Ϭ)
-O=self
-Ӎ=Ϭ
-while Ӎ
-print((("<b>"+Ӎ.type)+"</b>:"))
-O.inspect(Ӎ.scope.refs)
-Ӎ=Ӎ.previous
-end while
-return null
-end function
-Ӏ.showInteractOptions=function()
-print(((("<b>Interactive dbgr mode</b>"+char(10))+char(10))+"<b>Actions</b>:"))
-print((char(9)+"<b>:q</b> exit"))
-print((char(9)+"<b>:i</b> show context info"))
-print((char(9)+"<b>:n</b> next line"))
-return null
-end function
-Ӏ.interact=function(Ϭ,Ё)
-O=self
-Ӎ=Ϭ
-while O.breakpoint
-O.showInteractOptions
-ӏ=user_input((("[Line: "+Ё)+"]: "))
-ӏ=ӏ.trim
-if (ӏ==":n") then
-return null
-else if (ӏ==":q") then
-O.setBreakPoint(false)
-else if (ӏ==":i") then
-O.inspectOperationContext(Ϭ)
-else
-Ә=(new O.CodeParser).constructor(ӏ)
-ѵ=Ә.parseChunk
-if Ә.hasError then
-print(Ә.getErrors.join(char(10)))
-else
-t=(new O.CPSEvaluatorWalker).constructor
-ѷ=(new O.TopOperation).constructor
-ϰ=Ϭ.fork("CALL","TEMPORARY")
-ϰ.dbgr=(new O.Base).constructor
-ѷ.body=t.visit(ѵ)
-ѷ.run(ϰ,true)
-end if
-end if
-end while
-end function
-J={}
-J.CodeParser=Ч
-J.CPSEvaluator=Ҫ
-J.OperationContext=ҳ
-J.Debugger=Ӏ
-J.constructor=function(N,P,params,ϳ,debug)
-O=self
-O.code=N
-O.api=P
-O.params=params
-O.dbgr=(new O.Debugger).constructor(@ϳ,@debug)
-O.status={"errors":[]}
-return O
-end function
-J.hasError=function()
-return (self.status.errors.len>0)
-end function
-J.getErrors=function()
-return self.status.errors
-end function
-J.digest=function()
-O=self
-Ә=(new O.CodeParser).constructor(O.code)
-ѵ=Ә.parseChunk
-if Ә.hasError then
-O.status.errors=(O.status.errors+Ә.getErrors)
-return null
-end if
-ӑ=(new O.CPSEvaluator).constructor(ѵ)
-Ӓ=ӑ.digest
-if ӑ.hasError then
-O.status.errors=(O.status.errors+ӑ.getErrors)
-return null
-end if
-ӓ=(new O.OperationContext).constructor(O.dbgr,true)
-O.api.typeof=function(Ѕ)
-Ӕ=typeof(@Ѕ)
-if ((Ӕ=="FunctionOperation") or (Ӕ=="proxyFunction")) then
-return "function"
-end if
-return Ӕ
-end function
-O.api.params=O.params
-ӓ.extend(O.api)
-return Ӓ.run(ӓ)
-end function
-return J
-end function
-injector.def("interpreter",["dynResolve","dynApply"],@Z)
-ӕ=function()
-d={}
-Ӗ={}
-Ӗ[0]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref)
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec
-end function
-Ӗ[1]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref,@ӗ.args[0])
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec(@ӗ.args[0])
-end function
-Ӗ[2]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref,@ӗ.args[0],@ӗ.args[1])
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec(@ӗ.args[0],@ӗ.args[1])
-end function
-Ӗ[3]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref,@ӗ.args[0],@ӗ.args[1],@ӗ.args[2])
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec(@ӗ.args[0],@ӗ.args[1],@ӗ.args[2])
-end function
-Ӗ[4]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref,@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3])
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec(@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3])
-end function
-Ӗ[5]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref,@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4])
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec(@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4])
-end function
-Ӗ[6]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref,@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4],@ӗ.args[5])
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec(@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4],@ӗ.args[5])
-end function
-Ӗ[7]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref,@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4],@ӗ.args[5],@ӗ.args[6])
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec(@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4],@ӗ.args[5],@ӗ.args[6])
-end function
-Ӗ[8]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref,@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4],@ӗ.args[5],@ӗ.args[6],@ӗ.args[7])
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec(@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4],@ӗ.args[5],@ӗ.args[6],@ӗ.args[7])
-end function
-Ӗ[9]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref,@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4],@ӗ.args[5],@ӗ.args[6],@ӗ.args[7],@ӗ.args[8])
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec(@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4],@ӗ.args[5],@ӗ.args[6],@ӗ.args[7],@ӗ.args[8])
-end function
-Ӗ[10]=function(ӗ)
-if (typeof(ӗ.ctx)=="dynProxy") then
-Ҧ=@ӗ.fn
-return Ҧ(ӗ.ctx.__ref,@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4],@ӗ.args[5],@ӗ.args[6],@ӗ.args[7],@ӗ.args[8],@ӗ.args[9])
-end if
-ӗ.ctx.__dynApplyExec=@ӗ.fn
-return ӗ.ctx.__dynApplyExec(@ӗ.args[0],@ӗ.args[1],@ӗ.args[2],@ӗ.args[3],@ӗ.args[4],@ӗ.args[5],@ӗ.args[6],@ӗ.args[7],@ӗ.args[8],@ӗ.args[9])
-end function
-d.METHODS=Ӗ
-d.apply=function(Ҧ,Ќ,Ͽ)
-O=self
-if (Ќ==null) then
-Ќ=[]
-end if
-if (Ͽ==null) then
-Ͽ=globals
-end if
-Ӝ=Ќ.len
-if O.METHODS.hasIndex(Ӝ) then
-Ӟ=@O.METHODS[Ӝ]
-return Ӟ({"classID":"apply","ctx":Ͽ,"fn":@Ҧ,"args":Ќ})
-end if
-exit("Error: dynApply only supports 10 arguments")
-end function
-return d
-end function
-injector.def("dynApply",@ӕ)
-Ӡ=function()
-Х={}
-Х.nativeHasIndex=@{}["hasIndex"]
-Х.MODES={"STRICT":0,"WARN":1,"IGNORE":2}
-Х.mode=Х.MODES.IGNORE
-Х.getMapIsa=function(Ѕ)
-ϸ={}
-Ӧ={}
-Ӧ.__ref=Ѕ
-Ӧ.classID="dynProxy"
-Ӧ.hasIndex=@ϸ["hasIndex"]
-Ӧ.indexOf=@ϸ["indexOf"]
-Ӧ.push=@ϸ["push"]
-Ӧ.remove=@ϸ["remove"]
-Ӧ.indexes=@ϸ["indexes"]
-Ӧ.len=@ϸ["len"]
-Ӧ.pop=@ϸ["pop"]
-Ӧ.shuffle=@ϸ["shuffle"]
-Ӧ.sum=@ϸ["sum"]
-Ӧ.values=@ϸ["values"]
-return Ӧ
-end function
-Х.getListIsa=function(Ѕ)
-ϸ=[]
-Ӧ={}
-Ӧ.__ref=Ѕ
-Ӧ.classID="dynProxy"
-Ӧ.hasIndex=@ϸ["hasIndex"]
-Ӧ.indexOf=@ϸ["indexOf"]
-Ӧ.remove=@ϸ["remove"]
-Ӧ.join=@ϸ["join"]
-Ӧ.push=@ϸ["push"]
-Ӧ.pop=@ϸ["pop"]
-Ӧ.pull=@ϸ["pull"]
-Ӧ.shuffle=@ϸ["shuffle"]
-Ӧ.reverse=@ϸ["reverse"]
-Ӧ.sort=@ϸ["sort"]
-Ӧ.indexes=@ϸ["indexes"]
-Ӧ.len=@ϸ["len"]
-Ӧ.sum=@ϸ["sum"]
-Ӧ.values=@ϸ["values"]
-return Ӧ
-end function
-Х.getStringIsa=function(Ѕ)
-ϸ=""
-Ӧ={}
-Ӧ.__ref=Ѕ
-Ӧ.classID="dynProxy"
-Ӧ.remove=@ϸ["remove"]
-Ӧ.hasIndex=@ϸ["hasIndex"]
-Ӧ.indexOf=@ϸ["indexOf"]
-Ӧ.lastIndexOf=@ϸ["lastIndexOf"]
-Ӧ.split=@ϸ["split"]
-Ӧ.replace=@ϸ["replace"]
-Ӧ.trim=@ϸ["trim"]
-Ӧ.indexes=@ϸ["indexes"]
-Ӧ.code=@ϸ["code"]
-Ӧ.len=@ϸ["len"]
-Ӧ.lower=@ϸ["lower"]
-Ӧ.upper=@ϸ["upper"]
-Ӧ.val=@ϸ["val"]
-Ӧ.values=@ϸ["values"]
-Ӧ.to_int=@ϸ["to_int"]
-return Ӧ
-end function
-Х.API_KEYS=["aptclientLib","computer","cryptoLib","file","libMail","MetaxploitLib","MetaLib","MetaMail","NetSession","port","router","shell","ftpshell"]
-Х.getApiIsa=function(Ѕ)
-ϸ=""
-Ӧ={}
-Ӧ.__ref=Ѕ
-Ӧ.classID="dynProxy"
-for Ѝ in Ѕ.__isa
-Ӧ[Ѝ.key]=@Ѝ.value
-end for
-return Ӧ
-end function
-Х.detach=function(Ѕ)
-O=self
-hasIndex=@O.hasIndex
-if O.usesNativeIsa(@Ѕ) then
-ӝ=typeof(Ѕ)
-if (ӝ=="map") then
-return O.getMapIsa(Ѕ)
-else if (ӝ=="list") then
-return O.getListIsa(Ѕ)
-else if (ӝ=="string") then
-return O.getStringIsa(Ѕ)
-else if (O.API_KEYS.indexOf(ӝ)!=null) then
-return O.getApiIsa(Ѕ)
-end if
-end if
-return @Ѕ
-end function
-Х.usesNativeIsa=function(Ѕ)
-O=self
-ӝ=typeof(@Ѕ)
-return ((((ӝ=="map") or (ӝ=="list")) or (ӝ=="string")) or (O.API_KEYS.indexOf(ӝ)!=null))
-end function
-Х.get=function(Ѕ,϶,п)
-if (typeof(϶)=="string") then
-϶=϶.split(".")
-end if
-O=self
-Й=@Ѕ
-hasIndex=@O.nativeHasIndex
-ӻ=([]+϶)
-while (@Ѕ!=null)
-if (ӻ.len==0) then break
-Ӽ=typeof(@Ѕ)
-ӽ=ӻ.pull
-if (((Ӽ=="list") or (Ӽ=="string")) and (typeof(ӽ)=="string")) then
-ӽ=ӽ.to_int
-if (typeof(ӽ)=="string") then
-Ѕ=O.detach(Ѕ)
-end if
-end if
-if hasIndex(@Ѕ,ӽ) then
-Ѕ=@Ѕ[ӽ]
-else if (((typeof(@Ѕ)!="string") and hasIndex(@Ѕ,"__isa")) and hasIndex(Ѕ.__isa,ӽ)) then
-Ѕ=@Ѕ.__isa[ӽ]
-else if O.usesNativeIsa(@Ѕ) then
-Ӿ=O.detach(Ѕ)
-if Ӿ.hasIndex(ӽ) then
-Ѕ=@Ѕ[ӽ]
-else
-Ѕ=null
-end if
-else
-Ѕ=null
-end if
-end while
-if (typeof(@Ѕ)=="null") then
-if (typeof(@п)=="null") then
-O.raise(((("[WARNING] Cannot get value "+϶.join(" "))+" from ")+@Й))
-end if
-return @п
-end if
-return @Ѕ
-end function
-Х.set=function(Ѕ,϶,ӿ)
-if (typeof(϶)=="string") then
-϶=϶.split(".")
-end if
-O=self
-Й=@Ѕ
-hasIndex=@O.hasIndex
-ӻ=([]+϶)
-Ұ=ӻ.pop
-if (Ұ==null) then
-return false
-end if
-Ѕ=O.get(Ѕ,ӻ)
-Ӽ=typeof(@Ѕ)
-if (((((typeof(Ѕ)=="null") or (Ӽ=="string")) or (Ӽ=="boolean")) or (Ӽ=="number")) or (Ӽ=="function")) then
-O.raise(((("[WARNING] Cannot set value "+϶.join(" "))+" on ")+@Й))
-return false
-end if
-Ѕ[Ұ]=@ӿ
-return true
-end function
-Х.getCallable=function(Ѕ,϶)
-if (typeof(϶)=="string") then
-϶=϶.split(".")
-end if
-O=self
-Й=@Ѕ
-Ͽ=null
-hasIndex=@O.hasIndex
-ӻ=([]+϶)
-while (@Ѕ!=null)
-if (ӻ.len==0) then break
-Ӽ=typeof(@Ѕ)
-ӽ=ӻ.pull
-if (((Ӽ=="list") or (Ӽ=="string")) and (typeof(ӽ)=="string")) then
-ӽ=ӽ.to_int
-if (typeof(ӽ)=="string") then
-Ͽ=Ѕ
-Ѕ=O.detach(Ѕ)
-Ӽ=typeof(@Ѕ)
-end if
-end if
-if (O.API_KEYS.indexOf(Ӽ)!=null) then
-Ͽ=O.detach(Ѕ)
-Ѕ=@Ѕ[ӽ]
-else if hasIndex(@Ѕ,ӽ) then
-Ͽ=@Ѕ
-Ѕ=@Ѕ[ӽ]
-else if (((Ӽ!="string") and hasIndex(@Ѕ,"__isa")) and hasIndex(Ѕ.__isa,ӽ)) then
-Ͽ=@Ѕ
-Ѕ=@Ѕ.__isa[ӽ]
-else if O.usesNativeIsa(@Ѕ) then
-Ͽ=Ѕ
-Ӿ=O.detach(Ѕ)
-if Ӿ.hasIndex(ӽ) then
-Ѕ=@Ѕ[ӽ]
-else
-Ѕ=null
-end if
-else
-Ѕ=null
-end if
-end while
-if (typeof(@Ѕ)=="null") then
-O.raise(((("[WARNING] Cannot get callable value "+϶.join(" "))+" from ")+@Й))
-end if
-return {"origin":@Ѕ,"context":Ͽ}
-end function
-Х.raise=function(ԁ)
-O=self
-if (O.mode==O.MODES.WARN) then
-print(ԁ)
-else if (O.mode==O.MODES.STRICT) then
-exit(ԁ)
-end if
-end function
-return Х
-end function
-injector.def("dynResolve",@Ӡ)
-H=function(I)
-J=I.interpreter
-L={}
-L.Interpreter=J
-L.execute=function(N,params)
-O=self
-P={}
-P.print=function(str)
-print(str)
-return null
-end function
-P.wait=@wait
-P.time=@time
-P.typeof=@typeof
-P.md5=@md5
-P.get_router=@get_router
-P.get_shell=@get_shell
-P.nslookup=@nslookup
-P.whois=@whois
-P.is_valid_ip=@is_valid_ip
-P.is_lan_ip=@is_lan_ip
-P.command_info=@command_info
-P.current_date=@current_date
-P.current_path=@current_path
-P.parent_path=@parent_path
-P.home_dir=@home_dir
-P.program_path=@program_path
-P.active_user=@active_user
-P.user_mail_address=@user_mail_address
-P.user_bank_number=@user_bank_number
-P.format_columns=@format_columns
-P.user_input=@user_input
-P.include_lib=@include_lib
-P.bitwise=@bitwise
-P.clear_screen=@clear_screen
-P.slice=@slice
-P.str=@str
-P.hash=@hash
-P.abs=@abs
-P.acos=@acos
-P.asin=@asin
-P.atan=@atan
-P.tan=@tan
-P.cos=@cos
-P.sin=@sin
-P.char=@char
-P.floor=@floor
-P.range=@range
-P.round=@round
-P.rnd=@rnd
-P.sign=@sign
-P.sqrt=@sqrt
-P.str=@str
-P.ceil=@ceil
-P.pi=@pi
-P.include_lib=@include_lib
-Q=time
-print((("Executing "+char(10))+N))
-K=(new O.Interpreter).constructor(N,P,params)
-R=K.digest
-if K.hasError then
-print(K.getErrors.join(char(10)))
-end if
-print(("Executed in "+(time-Q)))
-print("Global Context: ")
-print(R.scope.refs)
-end function
-return L
-end function
-injector.def("teditInterpreter",["interpreter"],@H)
+
+Z = function(I)
+	Х = I.dynResolve
+	Ч = Parser
+	d = I.dynApply
+	e = {"members": {}}
+
+	e.add = function(g, h)
+		O = self
+		O.members[g] = h
+		return O
+	end function
+
+	e.isInstanceOf = function(k)
+		O = self
+		return O.members.hasIndex(typeof(@k))
+	end function
+
+	e.get = function(g)
+		O = self
+
+		if O.members.hasIndex(g) then
+			return O.members[g]
+		end if
+
+		return null
+	end function
+
+	ӟ = {"members": {}}
+
+	ӟ.add = function(g, h)
+		O = self
+		O.members[g] = h
+		return O
+	end function
+
+	ӟ.isInstanceOf = function(k)
+		O = self
+		return O.members.hasIndex(typeof(@k))
+	end function
+
+	ӟ.get = function(g)
+		O = self
+
+		if O.members.hasIndex(g) then
+			return O.members[g]
+		end if
+
+		return null
+	end function
+
+	ӟ.ExpressionManager = e
+	e.OperationManager = ӟ
+	n = {"members": {}}
+
+	n.add = function(ҥ)
+		O = self
+		O.members[ҥ.id] = ҥ
+		return O
+	end function
+
+	n.get = function(g)
+		O = self
+
+		if O.members.hasIndex(g) then
+			return O.members[g]
+		end if
+
+		return null
+	end function
+
+	q = {"members": {}}
+
+	q.add = function(ҥ)
+		O = self
+		O.members[ҥ.id] = ҥ
+		return O
+	end function
+
+	q.get = function(g)
+		O = self
+
+		if O.members.hasIndex(g) then
+			return O.members[g]
+		end if
+
+		return null
+	end function
+
+	Ԁ = {}
+	e.add("AssignExpression", Ԁ)
+	Ԁ.dynResolve = Х
+	Ԁ.ExpressionManager = e
+	Ԁ.OperationManager = ӟ
+	Ԁ.FunctionRegistry = n
+	Ԁ.ScopeRegistry = q
+
+	Ԁ.constructor = function(s, t)
+		O = self
+
+		u = function(І)
+			O = self
+			h = null
+			w = null
+
+			if (І.type == "AssignmentStatement") then
+				h = {"left": O.build(І.variable), "right": O.build(І.init)}
+			else
+				h = O.cpsWalker.visit(І)
+			end if
+
+			return h
+		end function
+
+		Ϩ = {"cpsWalker": t, "build": @u}
+		O.classID = "AssignExpression"
+		O.ast = s
+		O.expr = Ϩ.build(s)
+		O.isExpression = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	Ԁ.get = function(Ϭ, ϭ)
+		O = self
+
+		Ϯ = function(І)
+			O = self.instance
+			ϰ = self.opc
+
+			if not O.ExpressionManager.isInstanceOf(І.left) then
+				ϰ.dbgr.raise(["Unexpected left assignment", O, ϱ].join(" "))
+			end if
+
+			ϱ = І.left.get(ϰ, O.expr)
+			ϴ = @І.right
+
+			if O.ExpressionManager.isInstanceOf(@ϴ) then
+				ϴ = ϴ.get(ϰ)
+			else if O.OperationManager.isInstanceOf(@ϴ) then
+				ϴ = ϴ.get(ϰ)
+
+				if (typeof(@ϴ) == "proxyFunction") then
+					ϴ = O.FunctionRegistry.get(ϴ.id)
+				end if
+
+				ϵ = ϱ.path.len
+
+				if ((typeof(@ϴ) == "FunctionOperation") and (typeof(ϱ.handle) != "null")) then
+					Ϲ = typeof(ϱ.handle)
+
+					if (((Ϲ != "string") and (Ϲ != "number")) and (Ϲ != "boolean")) then
+						ϴ = ϴ.fork(ϱ.handle)
+
+					end if
+				end if
+
+			else if (@ϴ == null) then
+				ϰ.dbgr.raise(["Unexpected right assignment", O, @ϴ].join(" "))
+			end if
+
+			if (typeof(ϱ.handle) != "null") then
+				ϻ = typeof(ϱ.handle)
+
+				if (ϻ == "proxyScope") then
+					ϰ.dbgr.debug({"type": "AssignExpression", "description": "assign with operationContext", "leftType": ϻ, "right": @ϴ})
+					ϼ = O.ScopeRegistry.get(ϱ.handle.id)
+					ϼ.set(ϱ.path, @ϴ)
+					return true
+				end if
+
+				ϰ.dbgr.debug({"type": "AssignExpression", "description": "assign with handle", "leftType": ϻ, "right": @ϴ})
+
+				if (((ϻ != "string") and (ϻ != "boolean")) and (ϻ != "number")) then
+					Ͼ = ϱ.path
+					Ͽ = ϱ.handle
+					O.dynResolve.set(Ͽ, Ͼ, @ϴ)
+					return true
+				else
+					ϰ.dbgr.raise(["Unexpected left assignment", O, ϱ].join(" "))
+				end if
+
+			end if
+
+			ϰ.dbgr.debug({"type": "AssignExpression", "description": "assign with scope", "path": ϱ.path, "right": @ϴ})
+			ϰ.set(ϱ.path, @ϴ)
+			return true
+		end function
+
+		Ѐ = {"instance": O, "eval": @Ϯ, "opc": Ϭ}
+		Ϭ.dbgr.debug({"type": "AssignExpression", "description": "get expr", "line": O.ast.line, "expr": O.expr})
+		return Ѐ.eval(O.expr)
+	end function
+
+	Ѓ = {}
+	e.add("BinaryNegatedExpression", Ѓ)
+	Ѓ.dynResolve = Х
+	Ѓ.ExpressionManager = e
+	Ѓ.OperationManager = ӟ
+
+	Є = function(Ѕ)
+		return Ѕ
+	end function
+
+	Ї = function(Ѕ)
+		return (Ѕ * -1)
+	end function
+
+	Ѓ.OPERATIONS = {"+": @Є, "-": @Ї}
+
+	Ѓ.constructor = function(s, t)
+		O = self
+
+		u = function(І)
+			O = self
+			h = null
+
+			if (І.type == "BinaryNegatedExpression") then
+				h = {"classID": І.type, "operator": І.operator, "arg": O.build(І.arg)}
+			else
+				h = O.cpsWalker.visit(І)
+			end if
+
+			return h
+		end function
+
+		Ϩ = {"cpsWalker": t, "build": @u}
+		O.classID = "BinaryNegatedExpression"
+		O.ast = s
+		O.expr = Ϩ.build(s)
+		O.isExpression = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	Ѓ.get = function(Ϭ, ϭ)
+		O = self
+
+		Ϯ = function(І)
+			O = self.instance
+			Ϭ = self.opc
+
+			if (typeof(І) == "BinaryNegatedExpression") then
+				Њ = self.eval(І.arg)
+				ҥ = @O.OPERATIONS[І.operator]
+				return ҥ(Њ)
+			end if
+
+			if (O.ExpressionManager.isInstanceOf(І) or O.OperationManager.isInstanceOf(І)) then
+				return І.get(Ϭ)
+			end if
+
+			return І
+		end function
+
+		Ѐ = {"instance": O, "eval": @Ϯ, "opc": Ϭ}
+		Ϭ.dbgr.debug({"type": "BinaryNegatedExpression", "description": "get expr", "line": O.ast.line, "expr": O.expr})
+		return Ѐ.eval(O.expr)
+	end function
+
+	Ћ = {}
+	e.add("CallExpression", Ћ)
+	Ћ.dynResolve = Х
+	Ћ.dynApply = d
+	Ћ.ExpressionManager = e
+	Ћ.OperationManager = ӟ
+	Ћ.FunctionRegistry = n
+
+	Ћ.constructor = function(s, t)
+		O = self
+
+		u = function(І)
+			O = self
+			h = null
+			w = null
+
+			if (І.type == "CallStatement") then
+				h = O.build(І.expression)
+			else if (І.type == "CallExpression") then
+				Ќ = []
+
+				for Ѝ in І.arguments
+					Ќ.push(O.cpsWalker.visit(Ѝ))
+				end for
+
+				h = {"classID": "call", "path": O.build(І.base), "args": Ќ}
+			else
+				h = O.cpsWalker.visit(І)
+			end if
+
+			return h
+		end function
+
+		Ϩ = {"cpsWalker": t, "build": @u}
+		O.classID = "CallExpression"
+		O.ast = s
+		O.expr = Ϩ.build(s)
+		O.isExpression = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	Ћ.get = function(Ϭ, ϭ)
+		O = self
+
+		А = function(Ќ)
+			O = self.instance
+			ϰ = self.opc
+			Б = []
+
+			for Ѝ in Ќ
+				ϰ.dbgr.debug({"type": "CallExpression", "description": "resolve arg", "item": @Ѝ})
+
+				if (O.ExpressionManager.isInstanceOf(@Ѝ) or O.OperationManager.isInstanceOf(@Ѝ)) then
+					Б.push(Ѝ.get(ϰ))
+				else
+					Б.push(@Ѝ)
+				end if
+			end for
+
+			return Б
+		end function
+
+		Ϯ = function(І)
+			O = self.instance
+
+			ϰ = self.forkedOpc
+
+			if O.ExpressionManager.isInstanceOf(І) then
+				return І.get(ϰ)
+			end if
+
+			Ќ = self.resolveArgs(І.args)
+			ϰ.dbgr.debug({"type": "CallExpression", "description": "resolved args", "args": Ќ})
+
+			if (typeof(І.path) == "call") then
+				Г = self.eval(І.path)
+
+				if (typeof(Г) == "proxyFunction") then
+					Г = O.FunctionRegistry.get(Г.id)
+				end if
+
+				if O.OperationManager.isInstanceOf(Г) then
+					ϰ.setMemory("args", Ќ)
+					return Г.run(ϰ)
+				else
+					ϰ.dbgr.raise(["CallExpression", "Unexpected handle result", O, Г].join(" "))
+				end if
+			end if
+
+			Ж = І.path.get(ϰ, O.expr)
+			ϰ.dbgr.debug({"type": "CallExpression", "description": "get path expr result", "pathExpr": Ж})
+			Ϲ = typeof(@Ж.handle)
+
+			if (Ϲ != "null") then
+				З = O.dynResolve.getCallable(@Ж.handle, Ж.path)
+				ϰ.dbgr.debug({"type": "CallExpression", "description": "handle callable", "callable": З})
+				ϰ.setMemory("args", Ќ)
+
+				if (typeof(@З.origin) == "proxyFunction") then
+					З.origin = O.FunctionRegistry.get(З.origin.id)
+				end if
+
+				if O.OperationManager.isInstanceOf(@З.origin) then
+					return З.origin.run(ϰ)
+				else if (typeof(@З.origin) == "function") then
+					return O.dynApply.apply(@З.origin, Ќ, З.context)
+				end if
+
+				ϰ.dbgr.raise({"type": "CallExpression", "description": "Unexpected handle call", "pathExpr": Ж, "callable": З})
+			end if
+
+			З = ϰ.getCallable(Ж.path)
+			ϰ.dbgr.debug({"type": "CallExpression", "description": "operationContext", "callable": З})
+			ϰ.setMemory("args", Ќ)
+
+			if (typeof(@З.origin) == "proxyFunction") then
+				З.origin = O.FunctionRegistry.get(З.origin.id)
+			end if
+
+			if O.OperationManager.isInstanceOf(@З.origin) then
+				Б = З.origin.run(ϰ)
+				return Б
+			else if (typeof(@З.origin) == "function") then
+				return O.dynApply.apply(@З.origin, Ќ, З.context)
+			end if
+
+			return @З.origin
+		end function
+
+		Ѐ = {"instance": O, "eval": @Ϯ, "resolveArgs": @А, "opc": Ϭ, "forkedOpc": Ϭ.fork("CALL", "TEMPORARY")}
+
+		Ϭ.dbgr.debug({"type": "CallExpression", "description": "get expr", "line": O.ast.line, "expr": O.expr})
+		return Ѐ.eval(O.expr)
+	end function
+
+	Л = {}
+	e.add("ListExpression", Л)
+	Л.dynResolve = Х
+	Л.ExpressionManager = e
+	Л.OperationManager = ӟ
+
+	Л.constructor = function(s, t)
+		O = self
+
+		u = function(І)
+			O = self
+			h = null
+
+			if (І.type == "ListConstructorExpression") then
+				М = []
+
+				for Ѝ in І.fields
+					М.push(O.cpsWalker.visit(Ѝ.value))
+				end for
+
+				h = {"classID": "listexpr", "values": М}
+			else
+				h = O.cpsWalker.visit(І)
+			end if
+
+			return h
+		end function
+
+		Ϩ = {"cpsWalker": t, "build": @u}
+		O.classID = "ListExpression"
+		O.ast = s
+		O.expr = Ϩ.build(s)
+		O.isExpression = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	Л.get = function(Ϭ, ϭ)
+		O = self
+
+		Ϯ = function(І)
+			O = self.instance
+			Ϭ = self.opc
+			О = ([] + І)
+			П = []
+			Р = О.pull
+
+			while (typeof(Р) != "null")
+				if (O.ExpressionManager.isInstanceOf(Р) or O.OperationManager.isInstanceOf(Р)) then
+					П.push(Р.get(Ϭ))
+				else
+					П.push(Р)
+				end if
+				Р = О.pull
+			end while
+
+			return П
+		end function
+
+		Ѐ = {"instance": O, "eval": @Ϯ, "opc": Ϭ}
+		Ϭ.dbgr.debug({"type": "ListExpression", "description": "get expr", "line": O.ast.line, "expr": O.expr})
+		return Ѐ.eval(O.expr.values)
+	end function
+
+	У = {}
+	e.add("LogicalAndBinaryExpression", У)
+
+	У["+"] = function(Ф, Ц)
+		return (Ф + Ц)
+	end function
+
+	У["-"] = function(Ф, Ц)
+		return (Ф - Ц)
+	end function
+
+	У["/"] = function(Ф, Ц)
+		return (Ф / Ц)
+	end function
+
+	У["*"] = function(Ф, Ц)
+		return (Ф * Ц)
+	end function
+
+	У["<"] = function(Ф, Ц)
+		return (Ф < Ц)
+	end function
+
+	У[">"] = function(Ф, Ц)
+		return (Ф > Ц)
+	end function
+
+	У["%"] = function(Ф, Ц)
+		return (Ф % Ц)
+	end function
+
+	У[">="] = function(Ф, Ц)
+		return (Ф >= Ц)
+	end function
+
+	У["=="] = function(Ф, Ц)
+		return (Ф == Ц)
+	end function
+
+	У["<="] = function(Ф, Ц)
+		return (Ф <= Ц)
+	end function
+
+	У["=="] = function(Ф, Ц)
+		return (Ф == Ц)
+	end function
+
+	У["<="] = function(Ф, Ц)
+		return (Ф <= Ц)
+	end function
+
+	У["!="] = function(Ф, Ц)
+		return (Ф != Ц)
+	end function
+
+	У["and"] = function(Ф, Ц)
+		return (Ф and Ц)
+	end function
+
+	У["or"] = function(Ф, Ц)
+		return (Ф or Ц)
+	end function
+
+	У["^"] = function(Ф, Ц)
+		return bitwise("^", Ф, Ц)
+	end function
+
+	У["|"] = function(Ф, Ц)
+		return bitwise("|", Ф, Ц)
+	end function
+
+	У["<<"] = function(Ф, Ц)
+		return bitwise("<<", Ф, Ц)
+	end function
+
+	У[">>"] = function(Ф, Ц)
+		return bitwise(">>", Ф, Ц)
+	end function
+
+	У[">>>"] = function(Ф, Ц)
+		return bitwise(">>>", Ф, Ц)
+	end function
+
+	У["&"] = function(Ф, Ц)
+		return bitwise("&", Ф, Ц)
+	end function
+
+	У.OPERATIONS = У
+	У.dynApply = d
+	У.dynResolve = Х
+	У.ExpressionManager = e
+	У.OperationManager = ӟ
+
+	У.constructor = function(s, t)
+		O = self
+
+		u = function(І)
+			O = self
+			h = null
+
+			if ((І.type == "LogicalExpression") or (І.type == "BinaryExpression")) then
+				h = {"classID": І.type, "operator": І.operator, "left": O.build(І.left), "right": O.build(І.right)}
+			else
+				h = O.cpsWalker.visit(І)
+			end if
+
+			return h
+		end function
+
+		Ϩ = {"cpsWalker": t, "build": @u}
+		O.classID = "LogicalAndBinaryExpression"
+		O.ast = s
+		O.expr = Ϩ.build(s)
+		O.isExpression = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	У.get = function(Ϭ, ϭ)
+		O = self
+
+		Ϯ = function(І)
+			O = self.instance
+			Ϭ = self.opc
+			ϱ = null
+			ϴ = null
+			ӝ = typeof(І)
+			Ϭ.dbgr.debug({"type": "LogicalAndBinaryExpression", "description": "type", "val": ӝ})
+
+			if (ӝ == "BinaryExpression") then
+				ϱ = self.eval(І.left)
+				ϴ = self.eval(І.right)
+				return O.dynApply.apply(@O.OPERATIONS[І.operator], [ϱ, ϴ])
+			else if (ӝ == "LogicalExpression") then
+				ϱ = self.eval(І.left)
+
+				if ((typeof(ϱ) == "list") and not ϱ) then
+					ϱ = false
+				end if
+
+				if ((І.operator == "and") and not ϱ) then
+					return false
+				else if ((І.operator == "or") and ϱ) then
+					return true
+				end if
+
+				ϴ = self.eval(І.right)
+				return O.dynApply.apply(@O.OPERATIONS[І.operator], [ϱ, ϴ])
+			end if
+
+			if (O.ExpressionManager.isInstanceOf(І) or O.OperationManager.isInstanceOf(І)) then
+				return І.get(Ϭ)
+			end if
+
+			return І
+		end function
+
+		Ѐ = {"instance": O, "eval": @Ϯ, "opc": Ϭ}
+		Ϭ.dbgr.debug({"type": "LogicalAndBinaryExpression", "description": "get expr", "line": O.ast.line, "expr": O.expr})
+		return Ѐ.eval(O.expr)
+	end function
+
+	Ш = {}
+	e.add("MapExpression", Ш)
+	Ш.dynResolve = Х
+	Ш.ExpressionManager = e
+	Ш.OperationManager = ӟ
+
+	Ш.constructor = function(s, t)
+		O = self
+
+		u = function(І)
+			O = self
+			h = null
+
+			if (І.type == "MapConstructorExpression") then
+				М = []
+
+				for Ѝ in І.fields
+					М.push({"key": O.cpsWalker.visit(Ѝ.key), "value": O.cpsWalker.visit(Ѝ.value)})
+				end for
+
+				h = {"classID": "mapexpr", "values": М}
+			else
+				h = O.cpsWalker.visit(І)
+			end if
+
+			return h
+		end function
+
+		Ϩ = {"cpsWalker": t, "build": @u}
+		O.classID = "MapExpression"
+		O.ast = s
+		O.expr = Ϩ.build(s)
+		O.isExpression = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	Ш.get = function(Ϭ, ϭ)
+		O = self
+
+		Ϯ = function(І)
+			O = self.instance
+			Ϭ = self.opc
+			О = ([] + І)
+			Щ = {}
+			Р = О.pull
+
+			while Р
+				g = null
+				Н = null
+
+				if (typeof(Р.key) == "string") then
+					g = Р.key
+				else
+					Ϭ.dbgr.raise(["Unexpected key", O, Р.key].join(" "))
+				end if
+
+				if (O.ExpressionManager.isInstanceOf(Р.value) or O.OperationManager.isInstanceOf(Р.value)) then
+					Н = Р.value.get(Ϭ)
+				else
+					Н = Р.value
+				end if
+
+				Щ[g] = Н
+				Р = О.pull
+			end while
+
+			return Щ
+		end function
+
+		Ѐ = {"instance": O, "eval": @Ϯ, "opc": Ϭ}
+		Ϭ.dbgr.debug({"type": "MapExpression", "description": "get expr", "line": O.ast.line, "expr": O.expr})
+		return Ѐ.eval(O.expr.values)
+	end function
+
+	Ъ = {}
+	e.add("PathExpression", Ъ)
+	Ъ.dynResolve = Х
+	Ъ.dynApply = d
+	Ъ.ExpressionManager = e
+	Ъ.OperationManager = ӟ
+	Ъ.FunctionRegistry = n
+	Ъ.ScopeRegistry = q
+
+	Ъ.constructor = function(s, t)
+		O = self
+
+		Ы = function(Ϫ, Ѕ)
+			if (typeof(Ѕ) == "list") then
+				return (Ϫ + Ѕ)
+			end if
+			return (Ϫ + [Ѕ])
+		end function
+
+		u = function(І)
+			O = self
+			h = []
+
+			if (І.type == "MemberExpression") then
+				h = O.append(h, O.build(І.base))
+
+				h = O.append(h, O.build(І.identifier))
+			else if (І.type == "IndexExpression") then
+				h = O.append(h, O.build(І.base))
+				Э = O.dynResolve.get(І.index, "type")
+
+				if (Э == "SliceExpression") then
+					h = O.append(h, {"classID": "slice", "left": O.cpsWalker.visit(І.index.left), "right": O.cpsWalker.visit(І.index.right)})
+				else
+					h = O.append(h, {"classID": "index", "value": O.cpsWalker.visit(І.index)})
+				end if
+
+			else if (І.type == "Identifier") then
+				h = O.append(h, {"classID": "path", "value": І.value})
+			else
+				h = O.append(h, O.cpsWalker.visit(І))
+			end if
+
+			return h
+		end function
+
+		Ϩ = {"dynResolve": O.dynResolve, "cpsWalker": t, "build": @u, "append": @Ы}
+		O.classID = "PathExpression"
+		O.ast = s
+		O.expr = Ϩ.build(s)
+		O.isExpression = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	Ъ.getByIndex = function(Ю)
+		return self.expr[Ю]
+	end function
+
+	Ъ.get = function(Ϭ, ϭ)
+		O = self
+		ϰ = Ϭ
+
+		Ϯ = function(І)
+			O = self.instance
+			ϰ = self.opc
+			О = ([] + І)
+			а = []
+			б = 0
+			ϸ = null
+			Р = О.pull
+
+			while Р
+				в = typeof(Р)
+
+				if O.ExpressionManager.isInstanceOf(Р) then
+					ϸ = Р.get(ϰ, O.expr)
+				else if O.OperationManager.isInstanceOf(Р) then
+					ϸ = Р.get(ϰ)
+				else if (в == "path") then
+					ϰ.dbgr.debug({"type": "PathExpression", "description": "current path", "path": Р.value})
+
+					if ((Р.value == "self") and (б == 0)) then
+						г = ϰ.getMemory("functionContext")
+
+						Ͽ = O.dynResolve.get(г, "context")
+
+						if (typeof(Ͽ) != "null") then
+							ϸ = г.context
+						else
+							ϰ.dbgr.raise(["Unexpected self", O, Р].join(" "))
+						end if
+					else
+						а.push(Р.value)
+
+						if (О.len > 0) then
+							Ϲ = typeof(@ϸ)
+
+							if (Ϲ != "null") then
+								Й = ϸ
+							else
+								Й = @ϰ
+							end if
+
+							е = typeof(@Й)
+							ϰ.dbgr.debug({"type": "PathExpression", "description": "traversed", "origin": @Й, "originType": е})
+
+							if (е == "proxyScope") then
+								ϼ = O.ScopeRegistry.get(Й.id)
+								ϸ = ϼ.get(а)
+							else if ((е == "operationContext") or O.ExpressionManager.isInstanceOf(@Й)) then
+								ϸ = Й.get(а)
+							else
+								З = O.dynResolve.getCallable(@Й, а)
+								е = typeof(@З.origin)
+								ϰ.dbgr.debug({"type": "PathExpression", "description": "traversed", "callable": З})
+
+								if (е == "function") then
+									ϸ = O.dynApply.apply(@З.origin, null, З.context)
+								else if (е == "operationContext") then
+									ϸ = З.origin.createProxy
+								else
+									ϸ = @З.origin
+								end if
+
+							end if
+
+							а = []
+						end if
+					end if
+				else if (в == "index") then
+					Р = Р.value
+
+					if O.ExpressionManager.isInstanceOf(Р) then
+						Н = Р.get(ϰ)
+						а.push(Н)
+					else
+						а.push(Р)
+					end if
+				else if (в == "slice") then
+					if not ϸ then
+						ϸ = ϰ.get(а)
+						а = []
+					else if ((typeof(ϸ) != "list") and (typeof(ϸ) != "string")) then
+						ϰ.dbgr.raise({"type": "PathExpression", "description": "Invalid type for slice", "instance": O, "handle": ϸ})
+
+					end if
+
+					ϱ = Р.left
+
+					if O.ExpressionManager.isInstanceOf(ϱ) then
+						ϱ = ϱ.get(ϰ)
+					end if
+
+					ϴ = Р.right
+
+					if O.ExpressionManager.isInstanceOf(ϴ) then
+						ϴ = ϴ.get(ϰ)
+					end if
+
+					ϸ = ϸ[ϱ : ϴ]
+				else
+					ϸ = Р
+				end if
+
+				б = (б + 1)
+				Р = О.pull
+			end while
+
+			return {"classID": "pathResult", "handle": ϸ, "path": а}
+		end function
+
+		Ѐ = {"instance": O, "eval": @Ϯ, "opc": ϰ}
+		ϰ.dbgr.debug({"type": "PathExpression", "description": "get expr", "line": O.ast.line, "expr": O.expr})
+		з = Ѐ.eval(O.expr)
+		ϰ.dbgr.debug({"type": "PathExpression", "description": "result", "result": з, "parent": ϭ})
+
+		if not ϭ then
+			Ϲ = typeof(з.handle)
+
+			if (Ϲ != "null") then
+				if (з.path.len == 0) then
+					if (typeof(@з.handle) == "operationContext") then
+						return з.handle.createProxy
+					end if
+					return з.handle
+				end if
+
+				З = null
+				ϰ.dbgr.debug({"type": "PathExpression", "description": "get callable", "callable": Ϲ})
+
+				if (Ϲ == "proxyScope") then
+					и = O.ScopeRegistry.get(з.handle.id)
+					З = и.getCallable(з.path)
+				else
+					З = O.dynResolve.getCallable(з.handle, з.path)
+				end if
+
+				ϰ.dbgr.debug({"type": "PathExpression", "description": "is path with handle callable", "callable": З})
+
+				if (typeof(@З.origin) == "proxyFunction") then
+					З.origin = O.FunctionRegistry.get(З.origin.id)
+				end if
+
+				if O.OperationManager.isInstanceOf(@З.origin) then
+					return З.origin.run(ϰ)
+				else if (typeof(@З.origin) != "function") then
+					return З.origin
+				end if
+
+				return O.dynApply.apply(@З.origin, null, З.context)
+			end if
+
+			Н = ϰ.get(з.path)
+			ϰ.dbgr.debug({"type": "PathExpression", "description": "get with opc", "value": @Н, "opc": ϰ})
+
+			if (typeof(@Н) == "proxyFunction") then
+				Н = O.FunctionRegistry.get(Н.id)
+			end if
+
+			й = typeof(@Н)
+
+			if (й == "function") then
+				З = ϰ.getCallable(з.path)
+				return O.dynApply.apply(@З.origin, null, З.context)
+			else if O.OperationManager.isInstanceOf(Н) then
+				return Н.run(ϰ)
+			else if ((й == "operationContext") or (й == "scope")) then
+				return Н.createProxy
+			end if
+
+			return Н
+		end if
+
+		return з
+	end function
+
+	к = {}
+	ӟ.add("ArgumentOperation", к)
+	к.dynResolve = Х
+	к.ExpressionManager = e
+	к.OperationManager = ӟ
+
+	к.constructor = function(s, t)
+		O = self
+		O.classID = "ArgumentOperation"
+		O.ast = s
+		O.stack = []
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	к.run = function(Ϭ)
+		O = self
+		Ϭ.dbgr.raise(("Unexpected run call on " + typeof(O)))
+	end function
+
+	к.get = function(Ϭ)
+		O = self
+		л = O.stack
+		Ќ = []
+
+		for н in O.stack
+			о = н.path.get(Ϭ, O)
+
+			if (н.defaultValue != null) then
+				if (O.ExpressionManager.isInstanceOf(н.defaultValue) or O.OperationManager.isInstanceOf(н.defaultValue)) then
+					п = н.get(Ϭ, O)
+				else
+					п = н.defaultValue
+				end if
+				Ϭ.set(о.path, п)
+			end if
+
+			Ќ.push(о.path)
+		end for
+
+		return Ќ
+	end function
+
+	р = {}
+	ӟ.add("BodyOperation", р)
+	р.dynResolve = Х
+	р.ExpressionManager = e
+	р.OperationManager = ӟ
+
+	р.constructor = function(s, t)
+		O = self
+		O.classID = "BodyOperation"
+		O.ast = s
+		O.stack = []
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	р.run = function(Ϭ)
+		O = self
+		с = {}
+
+		с.is = function()
+			return false
+		end function
+
+		if (Ϭ.type == "LOOP") then
+			с.context = Ϭ.getMemory("loopContext")
+
+			с.is = function()
+				return (self.context.isBreak or self.context.isContinue)
+			end function
+		else if (Ϭ.type == "FUNCTION") then
+			с.context = Ϭ.getMemory("functionContext")
+
+			с.is = function()
+				return self.context.isReturn
+			end function
+
+		end if
+
+		for н in O.stack
+			if Ϭ.dbgr.getBreakPoint then
+				Ϭ.dbgr.interact(Ϭ, н.ast.line)
+			end if
+
+			if O.ExpressionManager.isInstanceOf(н) then
+				н.get(Ϭ)
+			else
+				н.run(Ϭ)
+			end if
+
+			if с.is then
+				break
+			end if
+
+		end for
+
+	end function
+
+	ш = {}
+	ӟ.add("BreakOperation", ш)
+
+	ш.constructor = function(s, t)
+		O = self
+		O.classID = "BreakOperation"
+		O.ast = s
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	ш.run = function(Ϭ)
+		O = self
+		щ = Ϭ.getMemory("loopContext")
+		щ.isBreak = true
+	end function
+
+	ъ = {}
+	ӟ.add("ContinueOperation", ъ)
+
+	ъ.constructor = function(s, t)
+		O = self
+		O.classID = "ContinueOperation"
+		O.ast = s
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	ъ.run = function(Ϭ)
+		O = self
+		щ = Ϭ.getMemory("loopContext")
+		щ.isContinue = true
+	end function
+
+	ы = {}
+	ӟ.add("DebuggerOperation", ы)
+
+	ы.constructor = function(s, t)
+		O = self
+		O.classID = "DebuggerOperation"
+		O.ast = s
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	ы.run = function(Ϭ)
+		O = self
+		Ϭ.dbgr.setBreakPoint(true)
+		Ϭ.dbgr.interact(Ϭ, O.ast.line)
+	end function
+
+	э = {}
+	ӟ.add("ElseIfOperation", э)
+
+	э.constructor = function(s, t)
+		O = self
+		O.classID = "ElseIfOperation"
+		O.ast = s
+		O.condition = null
+		O.body = null
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	э.run = function(Ϭ)
+		O = self
+		Ϭ.dbgr.raise(("Unexpected run call on " + typeof(O)))
+	end function
+
+	ѐ = {}
+	ӟ.add("ElseOperation", ѐ)
+
+	ѐ.constructor = function(s, t)
+		O = self
+		O.classID = "ElseOperation"
+		O.ast = s
+		O.body = null
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	ё = {}
+	ӟ.add("ForOperation", ё)
+
+	ё.constructor = function(s, t)
+		O = self
+		O.classID = "ForOperation"
+		O.ast = s
+		O.variable = null
+		O.iterator = null
+		O.body = null
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	ё.run = function(Ϭ)
+		O = self
+
+		ϰ = Ϭ.fork("LOOP", "TEMPORARY")
+
+		y = O.variable.get(ϰ, O)
+		ђ = O.iterator.get(ϰ)
+		щ = {"isBreak": false, "isContinue": false}
+		ϰ.setMemory("loopContext", щ)
+
+		for Н in ђ
+			щ.isContinue = false
+			ϰ.set(y.path, Н)
+			O.body.run(ϰ)
+
+			if щ.isContinue then
+				continue
+			else if щ.isBreak then
+				break
+			end if
+
+		end for
+
+	end function
+
+	ѓ = {}
+	ӟ.add("FunctionOperation", ѓ)
+	ѓ.Base = ѓ
+	ѓ.FunctionRegistry = n
+
+	ѓ.constructor = function(s, t)
+		O = self
+		O.id = md5(str(time))
+		O.classID = "FunctionOperation"
+		O.ast = s
+		O.args = null
+		O.body = null
+		O.isOperation = true
+		O.context = null
+		O.isFunction = true
+		O.cpsWalker = t
+		O.FunctionRegistry.add(O)
+		return O
+	end function
+
+	ѓ.getType = function()
+		return "function"
+
+	end function
+
+	ѓ.fork = function(Ͽ)
+		O = self
+		ї = (new O.Base).constructor(O.ast, O.cpsWalker)
+		ї.args = O.args
+		ї.body = O.body
+		ї.context = Ͽ
+		return ї
+	end function
+
+	ѓ.createProxy = function()
+		O = self
+		return {"classID": "proxyFunction", "id": O.id}
+	end function
+
+	ѓ.get = function(Ϭ)
+		return self
+	end function
+
+	ѓ.toString = function()
+		return "Function"
+	end function
+
+	ѓ.run = function(Ϭ)
+		O = self
+
+		ϰ = Ϭ.fork("FUNCTION", "DEFAULT")
+
+		ј = Ϭ.getMemory("args")
+		Ќ = O.args.get(ϰ)
+		љ = {}
+		Б = null
+		г = {"value": Б, "isReturn": false, "context": O.context}
+		ϰ.dbgr.debug({"type": "FunctionOperation", "description": "prepare arguments", "args": Ќ})
+
+		ϰ.setMemory("functionContext", г)
+
+		Ю = 0
+		њ = Ќ.len
+
+		while (Ю < њ)
+			if ј.hasIndex(Ю) then
+				ϰ.set(Ќ[Ю], ј[Ю])
+			end if
+			Ю = (Ю + 1)
+		end while
+
+		ϰ.dbgr.debug({"type": "FunctionOperation", "description": "execute body", "opc": ϰ})
+		O.body.run(ϰ)
+		return г.value
+	end function
+
+	ћ = {}
+	ӟ.add("IfStatementOperation", ћ)
+
+	ћ.constructor = function(s, t)
+		O = self
+		O.classID = "IfStatementOperation"
+		O.ast = s
+		O.clauses = []
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	ћ.run = function(Ϭ)
+		O = self
+		ќ = O.clauses
+
+		for ѝ in ќ
+			ў = typeof(ѝ)
+
+			if ((ў == "IfOperation") or (ў == "ElseIfOperation")) then
+				џ = ѝ.condition.get(Ϭ)
+
+				if џ then
+					ѝ.body.run(Ϭ)
+					return 
+				end if
+			else if (ў == "ElseOperation") then
+				ѝ.body.run(Ϭ)
+				return 
+			else
+				Ϭ.dbgr.raise({"type": "IfStatementOperation", "description": "Invalid operation in if statement", "clause": ѝ})
+
+			end if
+		end for
+
+	end function
+
+	Ѡ = {}
+	ӟ.add("IfOperation", Ѡ)
+
+	Ѡ.constructor = function(s, t)
+		O = self
+		O.classID = "IfOperation"
+		O.ast = s
+		O.condition = null
+		O.body = null
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	Ѡ.run = function(Ϭ)
+		O = self
+		Ϭ.dbgr.raise(("Unexpected run call on " + typeof(O)))
+	end function
+
+	ѡ = {}
+	ӟ.add("NewOperation", ѡ)
+	ѡ.dynResolve = Х
+	ѡ.ExpressionManager = e
+	ѡ.OperationManager = ӟ
+
+	ѡ.constructor = function(s, t)
+		O = self
+		O.classID = "NewOperation"
+		O.ast = s
+		O.arg = null
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	ѡ.run = function(Ϭ)
+		O = self
+		Ϭ.dbgr.raise(("Unexpected run call on " + typeof(O)))
+	end function
+
+	ѡ.get = function(Ϭ)
+		O = self
+		Њ = O.arg
+		Ϭ.dbgr.debug({"type": "NewOperation", "description": "start", "arg": @Њ})
+
+		if O.ExpressionManager.isInstanceOf(Њ) then
+			Њ = Њ.get(Ϭ)
+		end if
+
+		Ѣ = typeof(@Њ)
+
+		if ((((Ѣ == "string") or (Ѣ == "number")) or (Ѣ == "boolean")) or (Ѣ == "list")) then
+			Ϭ.dbgr.raise({"type": "NewOperation", "description": "Unexpected type for new operator", "arg": Њ})
+
+		end if
+
+		ѣ = {}
+		Ϭ.dbgr.debug({"type": "NewOperation", "description": "start creation", "arg": @Њ})
+
+		for Ѝ in @Њ
+			if (typeof(Ѝ.value) == "FunctionOperation") then
+				ѣ[Ѝ.key] = Ѝ.value.fork(ѣ)
+
+			else
+				ѣ[Ѝ.key] = Ѝ.value
+			end if
+
+		end for
+
+		return (new ѣ)
+	end function
+
+	Ѥ = {}
+	ӟ.add("NotOperation", Ѥ)
+	Ѥ.dynResolve = Х
+	Ѥ.ExpressionManager = e
+	Ѥ.OperationManager = ӟ
+
+	Ѥ.constructor = function(s, t)
+		O = self
+		O.classID = "NotOperation"
+		O.ast = s
+		O.arg = null
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	Ѥ.run = function(Ϭ)
+		O = self
+		Ϭ.dbgr.raise(("Unexpected run call on " + typeof(O)))
+	end function
+
+	Ѥ.get = function(Ϭ)
+		O = self
+		Њ = O.arg
+
+		if O.ExpressionManager.isInstanceOf(Њ) then
+			Њ = Њ.get(Ϭ)
+		end if
+
+		return not Њ
+	end function
+
+	ѥ = {}
+	ӟ.add("ReferenceOperation", ѥ)
+	ѥ.dynResolve = Х
+	ѥ.ExpressionManager = e
+	ѥ.OperationManager = ӟ
+
+	ѥ.constructor = function(s, t)
+		O = self
+		O.classID = "ReferenceOperation"
+		O.ast = s
+		O.arg = null
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	ѥ.run = function(Ϭ)
+		O = self
+		Њ = @O.arg
+		Ѧ = null
+
+		if O.ExpressionManager.isInstanceOf(@Њ) then
+			Ѧ = Њ.get(Ϭ)
+		else
+			Ϭ.dbgr.raise(["Unexpected reference", O.arg].join(" "))
+			return null
+		end if
+
+		return @Ѧ
+	end function
+
+	ѥ.get = function(Ϭ)
+		O = self
+		Њ = @O.arg
+
+		if (O.ExpressionManager.isInstanceOf(@Њ) or O.OperationManager.isInstanceOf(@Њ)) then
+			Њ = Њ.get(Ϭ, O)
+		else
+			Ϭ.dbgr.raise(["Unexpected reference", O.arg].join(" "))
+			return null
+		end if
+
+		if (typeof(@Њ) != "pathResult") then
+			Ϭ.dbgr.raise(["Unexpected reference result", @Њ].join(" "))
+			return @Њ
+		end if
+
+		Ϭ.dbgr.debug({"type": "ReferenceOperation", "description": "handle", "arg": @Њ})
+		ϸ = Њ.handle
+		Ϲ = typeof(@ϸ)
+		Ϭ.dbgr.debug({"type": "ReferenceOperation", "description": "handle type after resolve", "handleType": Ϲ})
+
+		if (Ϲ != "null") then
+			if (((Ϲ != "string") and (Ϲ != "number")) and (Ϲ != "boolean")) then
+				Ѧ = O.dynResolve.get(@ϸ, Њ.path)
+				Ϭ.dbgr.debug({"type": "ReferenceOperation", "description": "returns resolved value of handle", "resolvedValue": @Ѧ})
+
+				if (typeof(@Ѧ) == "FunctionOperation") then
+					return Ѧ.createProxy
+				else if (O.ExpressionManager.isInstanceOf(@Ѧ) or O.OperationManager.isInstanceOf(@Ѧ)) then
+					return Ѧ.get(Ϭ)
+				end if
+
+				return @Ѧ
+			end if
+
+			Ϭ.dbgr.raise({"type": "ReferenceOperation", "description": "Unexpected handle in reference statement", "handle": ϸ})
+			return ϸ
+		end if
+
+		Ѧ = Ϭ.get(Њ.path)
+		ϰ.dbgr.debug({"type": "ReferenceOperation", "description": "get with opc", "value": @Ѧ, "opc": Ϭ})
+
+		if (typeof(@Ѧ) == "FunctionOperation") then
+			return Ѧ.createProxy
+		else if (O.ExpressionManager.isInstanceOf(@Ѧ) or O.OperationManager.isInstanceOf(@Ѧ)) then
+			return Ѧ.get(Ϭ)
+		end if
+
+		return @Ѧ
+	end function
+
+	ѧ = {}
+	ӟ.add("ReturnOperation", ѧ)
+	ѧ.ExpressionManager = e
+	ѧ.OperationManager = ӟ
+
+	ѧ.constructor = function(s, t)
+		O = self
+		O.classID = "ReturnOperation"
+		O.ast = s
+		O.arg = null
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	ѧ.run = function(Ϭ)
+		O = self
+
+		г = Ϭ.getMemory("functionContext")
+
+		Њ = O.arg
+
+		if O.ExpressionManager.isInstanceOf(Њ) then
+			Њ = O.arg.get(Ϭ)
+		else if O.OperationManager.isInstanceOf(Њ) then
+			Њ = O.arg.get(Ϭ)
+		end if
+
+		г.value = Њ
+		г.isReturn = true
+	end function
+
+	Ѩ = {}
+	ӟ.add("TopOperation", Ѩ)
+
+	Ѩ.constructor = function()
+		O = self
+		O.classID = "TopOperation"
+		O.body = null
+		O.isOperation = true
+		return O
+	end function
+
+	Ѩ.run = function(Ϭ, ѩ)
+		O = self
+
+		if not ѩ then
+			ϰ = Ϭ.fork("GLOBAL", "DEFAULT")
+			ϰ.extend({"globals": ϰ.createProxy})
+		end if
+
+		O.body.run(ϰ)
+		return ϰ
+	end function
+
+	ѫ = {}
+	e.add("ImportCodeExpression", ѫ)
+	ѫ.CodeParser = Ч
+	ѫ.TopOperation = Ѩ
+
+	ѫ.constructor = function(s, t)
+		O = self
+
+		u = function(І)
+			O = self
+			Ѭ = І.filepath.value
+			ѭ = get_shell.host_computer.File(Ѭ)
+
+			if not ѭ then
+				O.cpsWalker.exception((("File " + Ѭ) + " cannot be found."))
+				return null
+			else if not ѭ.has_permission("r") then
+				O.cpsWalker.exception((("Has no permission to read " + Ѭ) + "."))
+				return null
+			else if ѭ.is_binary then
+				O.cpsWalker.exception((("File " + Ѭ) + " is a binary."))
+				return null
+			else if ѭ.is_folder then
+				O.cpsWalker.exception((("File " + Ѭ) + " is a folder."))
+				return null
+			end if
+
+			Ә = (new O.CodeParser).constructor(ѭ.get_content)
+			ѵ = Ә.parseChunk
+
+			if Ә.hasError then
+				O.cpsWalker.exception(Ә.getErrors.join(char(10)))
+				return null
+			end if
+
+			ѷ = (new O.TopOperation).constructor
+			ѷ.body = O.cpsWalker.visit(ѵ)
+			return ѷ
+		end function
+
+		Ϩ = {"cpsWalker": t, "build": @u, "CodeParser": O.CodeParser, "TopOperation": O.TopOperation}
+		O.classID = "ImportCodeExpression"
+		O.body = null
+		O.isExpression = true
+		O.ast = s
+		O.cpsWalker = t
+		O.expr = Ϩ.build(s)
+		return O
+	end function
+
+	ѫ.get = function(Ϭ, ϭ)
+		O = self
+
+		if (O.expr == null) then
+			Ϭ.dbgr.raise((("Import " + O.ast.filepath.value) + " is not available."))
+			return null
+		end if
+
+		return O.expr.run(Ϭ, true)
+	end function
+
+	Ѹ = {}
+	ӟ.add("WhileOperation", Ѹ)
+	Ѹ.ExpressionManager = e
+	Ѹ.OperationManager = ӟ
+
+	Ѹ.constructor = function(s, t)
+		O = self
+		O.classID = "WhileOperation"
+		O.ast = s
+		O.condition = null
+		O.body = null
+		O.isOperation = true
+		O.cpsWalker = t
+		return O
+	end function
+
+	Ѹ.run = function(Ϭ)
+		O = self
+
+		ϰ = Ϭ.fork("LOOP", "TEMPORARY")
+
+		щ = {"isBreak": false, "isContinue": false}
+		ю = {"instance": O, "opc": ϰ}
+
+		ю.is = function()
+			O = self.instance
+
+			if O.ExpressionManager.isInstanceOf(O.condition) then
+				return O.condition.get(self.opc)
+			end if
+
+			return O.condition
+		end function
+
+		ϰ.setMemory("loopContext", щ)
+
+		while ю.is
+			щ.isContinue = false
+			O.body.run(ϰ)
+
+			if щ.isContinue then
+				continue
+			else if щ.isBreak then
+				break
+			end if
+
+		end while
+
+	end function
+
+	ѹ = {}
+
+	ѹ.AssignmentStatement = function(t, Ѝ)
+		Ԁ = t.ExpressionManager.get("AssignExpression")
+		return (new Ԁ).constructor(Ѝ, t)
+	end function
+
+	ѹ.MemberExpression = function(t, Ѝ)
+		Ъ = t.ExpressionManager.get("PathExpression")
+		return (new Ъ).constructor(Ѝ, t)
+	end function
+
+	ѹ.FunctionDeclaration = function(t, Ѝ)
+		ѓ = t.OperationManager.get("FunctionOperation")
+		к = t.OperationManager.get("ArgumentOperation")
+		р = t.OperationManager.get("BodyOperation")
+		ҥ = (new ѓ).constructor(Ѝ, t)
+		Ќ = (new к).constructor(Ѝ.parameters, t)
+		я = (new р).constructor(Ѝ.body, t)
+
+		for Ѿ in Ѝ.parameters
+			϶ = t.visit(Ѿ.path)
+			п = t.visit(Ѿ.defaultValue)
+			Ќ.stack.push({"classID": "arg", "path": ϶, "defaultValue": п})
+		end for
+
+		for ѿ in Ѝ.body
+			я.stack.push(t.visit(ѿ))
+		end for
+
+		ҥ.args = Ќ
+		ҥ.body = я
+		return ҥ
+	end function
+
+	ѹ.MapConstructorExpression = function(t, Ѝ)
+		Ш = t.ExpressionManager.get("MapExpression")
+		return (new Ш).constructor(Ѝ, t)
+	end function
+
+	ѹ.Identifier = function(t, Ѝ)
+		Ъ = t.ExpressionManager.get("PathExpression")
+		return (new Ъ).constructor(Ѝ, t)
+	end function
+
+	ѹ.ReturnStatement = function(t, Ѝ)
+		ѧ = t.OperationManager.get("ReturnOperation")
+		ҥ = (new ѧ).constructor(Ѝ, t)
+		ҥ.arg = t.visit(Ѝ.arguments.pull)
+		return ҥ
+	end function
+
+	ѹ.NumericLiteral = function(t, Ѝ)
+		return Ѝ.value
+	end function
+
+	ѹ.WhileStatement = function(t, Ѝ)
+		Ѹ = t.OperationManager.get("WhileOperation")
+		р = t.OperationManager.get("BodyOperation")
+		ҥ = (new Ѹ).constructor(Ѝ, t)
+		я = (new р).constructor(Ѝ.body, t)
+		ҥ.condition = t.visit(Ѝ.condition)
+
+		for ѿ in Ѝ.body
+			я.stack.push(t.visit(ѿ))
+		end for
+
+		ҥ.body = я
+		return ҥ
+	end function
+
+	ѹ.StringLiteral = function(t, Ѝ)
+		return Ѝ.value
+	end function
+
+	ѹ.IndexExpression = function(t, Ѝ)
+		Ъ = t.ExpressionManager.get("PathExpression")
+		return (new Ъ).constructor(Ѝ, t)
+	end function
+
+	ѹ.IfShortcutStatement = function(t, Ѝ)
+		ћ = t.OperationManager.get("IfStatementOperation")
+		ҥ = (new ћ).constructor(Ѝ, t)
+
+		for ҈ in Ѝ.clauses
+			ҥ.clauses.push(t.visit(҈))
+		end for
+
+		return ҥ
+	end function
+
+	ѹ.IfShortcutClause = function(t, Ѝ)
+		Ѡ = t.OperationManager.get("IfOperation")
+		р = t.OperationManager.get("BodyOperation")
+		ҥ = (new Ѡ).constructor(Ѝ, t)
+		я = (new р).constructor(Ѝ.statement, t)
+		ҥ.condition = t.visit(Ѝ.condition)
+		я.stack.push(t.visit(Ѝ.statement))
+		ҥ.body = я
+		return ҥ
+	end function
+
+	ѹ.ElseifShortcutClause = function(t, Ѝ)
+		э = t.OperationManager.get("ElseIfOperation")
+		р = t.OperationManager.get("BodyOperation")
+		ҥ = (new э).constructor(Ѝ, t)
+		я = (new р).constructor(Ѝ.statement, t)
+		ҥ.condition = t.visit(Ѝ.condition)
+		я.stack.push(t.visit(Ѝ.statement))
+		ҥ.body = я
+		return ҥ
+	end function
+
+	ѹ.ElseShortcutClause = function(t, Ѝ)
+		ѐ = t.OperationManager.get("ElseOperation")
+		р = t.OperationManager.get("BodyOperation")
+		ҥ = (new ѐ).constructor(Ѝ, t)
+		я = (new р).constructor(Ѝ.statement, t)
+		я.stack.push(t.visit(Ѝ.statement))
+		ҥ.body = я
+		return ҥ
+	end function
+
+	ѹ.NilLiteral = function(t, Ѝ)
+		return null
+	end function
+
+	ѹ.ForGenericStatement = function(t, Ѝ)
+		ё = t.OperationManager.get("ForOperation")
+		р = t.OperationManager.get("BodyOperation")
+		ҥ = (new ё).constructor(Ѝ, t)
+		я = (new р).constructor(Ѝ.body, t)
+		ҥ.variable = t.visit(Ѝ.variable)
+		ҥ.iterator = t.visit(Ѝ.iterator)
+
+		for ѿ in Ѝ.body
+			я.stack.push(t.visit(ѿ))
+		end for
+
+		ҥ.body = я
+		return ҥ
+	end function
+
+	ѹ.IfStatement = function(t, Ѝ)
+		ћ = t.OperationManager.get("IfStatementOperation")
+		ҥ = (new ћ).constructor(Ѝ, t)
+
+		for ҈ in Ѝ.clauses
+			ҥ.clauses.push(t.visit(҈))
+		end for
+
+		return ҥ
+	end function
+
+	ѹ.IfClause = function(t, Ѝ)
+		Ѡ = t.OperationManager.get("IfOperation")
+		р = t.OperationManager.get("BodyOperation")
+		ҥ = (new Ѡ).constructor(Ѝ, t)
+		я = (new р).constructor(Ѝ.body, t)
+		ҥ.condition = t.visit(Ѝ.condition)
+
+		for ѿ in Ѝ.body
+			я.stack.push(t.visit(ѿ))
+		end for
+
+		ҥ.body = я
+		return ҥ
+	end function
+
+	ѹ.ElseifClause = function(t, Ѝ)
+		э = t.OperationManager.get("ElseIfOperation")
+		р = t.OperationManager.get("BodyOperation")
+		ҥ = (new э).constructor(Ѝ, t)
+		я = (new р).constructor(Ѝ.body, t)
+		ҥ.condition = t.visit(Ѝ.condition)
+
+		for ѿ in Ѝ.body
+			я.stack.push(t.visit(ѿ))
+		end for
+
+		ҥ.body = я
+		return ҥ
+	end function
+
+	ѹ.ElseClause = function(t, Ѝ)
+		ѐ = t.OperationManager.get("ElseOperation")
+		р = t.OperationManager.get("BodyOperation")
+		ҥ = (new ѐ).constructor(Ѝ, t)
+		я = (new р).constructor(Ѝ.body, t)
+
+		for ѿ in Ѝ.body
+			я.stack.push(t.visit(ѿ))
+		end for
+
+		ҥ.body = я
+		return ҥ
+	end function
+
+	ѹ.NegationExpression = function(t, Ѝ)
+		Ѥ = t.OperationManager.get("NotOperation")
+		ҥ = (new Ѥ).constructor(Ѝ, t)
+		ҥ.arg = t.visit(Ѝ.argument)
+		return ҥ
+	end function
+
+	ѹ.ContinueStatement = function(t, Ѝ)
+		ъ = t.OperationManager.get("ContinueOperation")
+		return (new ъ).constructor(Ѝ, t)
+	end function
+
+	ѹ.BreakStatement = function(t, Ѝ)
+		ш = t.OperationManager.get("BreakOperation")
+		return (new ш).constructor(Ѝ, t)
+	end function
+
+	ѹ.CallExpression = function(t, Ѝ)
+		Ћ = t.ExpressionManager.get("CallExpression")
+		return (new Ћ).constructor(Ѝ, t)
+	end function
+
+	ѹ.CallStatement = function(t, Ѝ)
+		Ћ = t.ExpressionManager.get("CallExpression")
+		return (new Ћ).constructor(Ѝ, t)
+	end function
+
+	ѹ.ImportCodeExpression = function(t, Ѝ)
+		ѫ = t.ExpressionManager.get("ImportCodeExpression")
+		return (new ѫ).constructor(Ѝ, t)
+	end function
+
+	ѹ.FeatureDebuggerExpression = function(t, Ѝ)
+		ы = t.OperationManager.get("DebuggerOperation")
+		return (new ы).constructor(Ѝ, t)
+	end function
+
+	ѹ.ListConstructorExpression = function(t, Ѝ)
+		Л = t.ExpressionManager.get("ListExpression")
+		return (new Л).constructor(Ѝ, t)
+	end function
+
+	ѹ.BooleanLiteral = function(t, Ѝ)
+		return Ѝ.value
+	end function
+
+	ѹ.EmptyExpression = function(t, Ѝ)
+		return 
+	end function
+
+	ѹ.BinaryExpression = function(t, Ѝ)
+		У = t.ExpressionManager.get("LogicalAndBinaryExpression")
+		return (new У).constructor(Ѝ, t)
+	end function
+
+	ѹ.BinaryNegatedExpression = function(t, Ѝ)
+		Ѓ = t.ExpressionManager.get("BinaryNegatedExpression")
+		return (new Ѓ).constructor(Ѝ, t)
+	end function
+
+	ѹ.LogicalExpression = function(t, Ѝ)
+		У = t.ExpressionManager.get("LogicalAndBinaryExpression")
+		return (new У).constructor(Ѝ, t)
+	end function
+
+	ѹ.UnaryExpression = function(t, Ѝ)
+		ҥ = null
+		ѥ = t.OperationManager.get("ReferenceOperation")
+		ѡ = t.OperationManager.get("NewOperation")
+
+		if ("@" == Ѝ.operator) then
+			ҥ = (new ѥ).constructor(Ѝ, t)
+		else if ("new" == Ѝ.operator) then
+			ҥ = (new ѡ).constructor(Ѝ, t)
+		end if
+
+		ҥ.arg = t.visit(Ѝ.argument)
+		return ҥ
+	end function
+
+	ѹ.Chunk = function(t, Ѝ)
+		р = t.OperationManager.get("BodyOperation")
+		ҥ = (new р).constructor(Ѝ, t)
+
+		for ѿ in Ѝ.body
+			ҥ.stack.push(t.visit(ѿ))
+		end for
+
+		return ҥ
+	end function
+
+	Ҡ = {}
+	Ҡ.defaultMapper = ѹ
+	Ҡ.OperationManager = ӟ
+	Ҡ.ExpressionManager = e
+
+	Ҡ.constructor = function()
+		O = self
+		O.mapper = O.defaultMapper
+		O.status = {"errors": []}
+		return O
+	end function
+
+	Ҡ.visit = function(Ҥ)
+		O = self
+
+		if (Ҥ == null) then
+			return 
+		end if
+
+		if (Ҥ.type == null) then
+			O.exception("Unexpected as type")
+			return 
+		end if
+
+		if not O.mapper.hasIndex(Ҥ.type) then
+			O.exception(("Type does not exist " + Ҥ.type))
+			return 
+		end if
+
+		Ҧ = @O.mapper[Ҥ.type]
+		Б = Ҧ(O, Ҥ)
+		return Б
+	end function
+
+	Ҡ.exception = function(ҧ)
+		O = self
+		Ҩ = ("[CPSEvaluatorWalker] Error: " + ҧ)
+		debug(Ҩ)
+		O.status.errors.push(Ҩ)
+		return null
+	end function
+
+	Ҡ.hasError = function()
+		return (self.status.errors.len > 0)
+	end function
+
+	Ҡ.getErrors = function()
+		return self.status.errors
+	end function
+
+	Ҫ = {}
+	Ҫ.TopOperation = Ѩ
+	Ҫ.CPSEvaluatorWalker = Ҡ
+
+	Ҫ.constructor = function(ѵ)
+		O = self
+		O.chunk = ѵ
+		O.status = {"errors": []}
+		return O
+	end function
+
+	Ҫ.hasError = function()
+		return (self.status.errors.len > 0)
+	end function
+
+	Ҫ.getErrors = function()
+		return self.status.errors
+	end function
+
+	Ҫ.digest = function()
+		O = self
+		t = (new O.CPSEvaluatorWalker).constructor
+		ҫ = t.visit(O.chunk)
+
+		if t.hasError then
+			O.status.errors = (O.status.errors + t.getErrors)
+			return null
+		end if
+
+		ѷ = (new O.TopOperation).constructor
+		ѷ.body = ҫ
+		return ѷ
+	end function
+
+	Ҭ = {}
+	Ҭ.dynResolve = Х
+	Ҭ.ScopeRegistry = q
+
+	Ҭ.constructor = function(Ͽ)
+		O = self
+		O.id = md5(str(time))
+		O.classID = "scope"
+		O.isScope = true
+		O.context = Ͽ
+		O.refs = {}
+		O.ScopeRegistry.add(O)
+		return O
+	end function
+
+	Ҭ.valueOf = function()
+		return self.refs
+	end function
+
+	Ҭ.createProxy = function()
+		O = self
+		return {"classID": "proxyScope", "id": O.id}
+	end function
+
+	Ҭ.extend = function(Щ)
+		O = self
+
+		if (Щ == null) then
+			Щ = {}
+		end if
+
+		for и in Щ
+			O.refs[и.key] = @и.value
+		end for
+
+		return O
+	end function
+
+	Ҭ.set = function(϶, Н)
+		O = self
+
+		if (typeof(϶) == "string") then
+			϶ = ϶.split("\.")
+		end if
+
+		ү = ([] + ϶)
+		X = O.refs
+		Ұ = ү.pop
+		Р = ү.pull
+		Й = X
+
+		if (Р != null) then
+			if (typeof(O.dynResolve.get(@Й, Р)) != "null") then
+				Й = @Й[Р]
+				е = typeof(@Й)
+
+				if ((е == "list") or (е == "map")) then
+					return O.dynResolve.set(@Й, (ү + [Ұ]), @Н)
+				else if (е == "scope") then
+					return Й.set((ү + [Ұ]), @Н)
+				end if
+
+			else if (O.dynResolve.get(O, "context.previous") and not O.dynResolve.get(O, "context.previous.isProteced")) then
+				return O.context.previous.set(϶, @Н)
+			else if (ү.len > 0) then
+				exit(("Cannot set path " + ϶.join(".")))
+			end if
+
+		end if
+
+		е = typeof(@Й)
+
+		if (((((@Й != null) and (е != "boolean")) and (е != "string")) and (е != "number")) and (е != "null")) then
+			Й[Ұ] = @Н
+		else
+			exit(("Cannot set path " + ϶.join(".")))
+		end if
+
+	end function
+
+	Ҭ.get = function(϶)
+		O = self
+
+		if (typeof(϶) == "string") then
+			϶ = ϶.split("\.")
+		end if
+
+		ү = ([] + ϶)
+		X = O.refs
+		Р = ү.pull
+		Й = X
+
+		if (Р != null) then
+			if (typeof(O.dynResolve.get(@Й, Р)) != "null") then
+				Й = @Й[Р]
+				е = typeof(@Й)
+
+				if (ү.len > 0) then
+					if (е == "scope") then
+						return Й.get(ү)
+					else if ((е != "number") or (е != "boolean")) then
+						return O.dynResolve.get(@Й, ү)
+					end if
+
+				end if
+
+			else if (O.context.previous != null) then
+				return O.context.previous.get(϶)
+			else
+				Й = null
+			end if
+
+		end if
+
+		return @Й
+	end function
+
+	Ҭ.getCallable = function(϶)
+		O = self
+
+		if (typeof(϶) == "string") then
+			϶ = ϶.split("\.")
+		end if
+
+		ү = ([] + ϶)
+		X = O.refs
+		Р = ү.pull
+		Й = X
+		Ͽ = null
+
+		if (Р != null) then
+			if (typeof(O.dynResolve.get(@Й, Р)) != "null") then
+				Ͽ = @Й
+				Й = @Й[Р]
+				е = typeof(@Й)
+
+				if (е == "scope") then
+					return Й.getCallable(ү)
+				else if ((е != "number") or (е != "boolean")) then
+					return O.dynResolve.getCallable(@Й, ү)
+				end if
+
+			else if O.dynResolve.get(O, "context.previous") then
+				return O.context.previous.getCallable(϶)
+			else
+				Й = null
+			end if
+
+		end if
+
+		return {"origin": @Й, "context": Ͽ}
+	end function
+
+	ҳ = {}
+	ҳ.TYPE = {"API": "API", "GLOBAL": "GLOBAL", "FUNCTION": "FUNCTION", "LOOP": "LOOP", "MAP": "MAP", "CALL": "CALL"}
+	ҳ.STATE = {"TEMPORARY": "TEMPORARY", "DEFAULT": "DEFAULT"}
+	ҳ.Base = ҳ
+	ҳ.Scope = Ҭ
+
+	ҳ.constructor = function(Ҷ, ҷ = false)
+		O = self
+		O.classID = "operationContext"
+		O.previous = null
+		O.type = O.TYPE.API
+		O.state = O.STATE.DEFAULT
+		O.scope = (new O.Scope).constructor(O)
+		O.isProteced = ҷ
+		O.dbgr = Ҷ
+		O.memory = {}
+		return O
+	end function
+
+	ҳ.valueOf = function()
+		return self.scope.valueOf
+	end function
+
+	ҳ.createProxy = function()
+		return self.scope.createProxy
+	end function
+
+	ҳ.extend = function(Щ)
+		O = self
+
+		if (O.state == O.STATE.TEMPORARY) then
+			O.previous.extend(Щ)
+		else
+			O.scope.extend(Щ)
+		end if
+
+		return O
+	end function
+
+	ҳ.set = function(϶, Н)
+		O = self
+
+		if (O.state == O.STATE.TEMPORARY) then
+			O.previous.set(϶, Н)
+		else
+			O.scope.set(϶, Н)
+		end if
+
+		return O
+	end function
+
+	ҳ.get = function(϶)
+		O = self
+
+		if (O.state == O.STATE.TEMPORARY) then
+			return O.previous.get(϶)
+		end if
+
+		return O.scope.get(϶)
+	end function
+
+	ҳ.setMemory = function(g, Н)
+		O = self
+		O.memory[g] = Н
+		return O
+	end function
+
+	ҳ.getMemory = function(g)
+		O = self
+
+		if O.memory.hasIndex(g) then
+			return O.memory[g]
+		end if
+
+		return null
+	end function
+
+	ҳ.getCallable = function(϶)
+		O = self
+
+		if (O.state == O.STATE.TEMPORARY) then
+			return O.previous.getCallable(϶)
+		end if
+
+		return O.scope.getCallable(϶)
+	end function
+
+	ҳ.fork = function(ӝ, ҹ)
+		O = self
+		ϰ = (new O.Base).constructor(O.dbgr)
+		ϰ.previous = O
+		ϰ.type = ӝ
+		ϰ.state = ҹ
+
+		if ((O.type == O.TYPE.FUNCTION) or (O.type == O.TYPE.GLOBAL)) then
+			ϰ.extend({"locals": ϰ.createProxy})
+		end if
+
+		if (ӝ != O.TYPE.FUNCTION) then
+			if (ӝ != O.TYPE.LOOP) then
+				ϰ.setMemory("loopContext", O.getMemory("loopContext"))
+			end if
+
+			ϰ.setMemory("functionContext", O.getMemory("functionContext"))
+
+		end if
+
+		return ϰ
+	end function
+
+	Ӏ = {}
+	Ӏ.CodeParser = Ч
+	Ӏ.CPSEvaluatorWalker = Ҡ
+	Ӏ.TopOperation = Ѩ
+	Ӏ.Base = Ӏ
+
+	Ӏ.constructor = function(ϳ, debug)
+		O = self
+		O.customRaise = ϳ
+		O.customDebug = debug
+		O.breakpoint = false
+		O.maxLevel = 4
+		return O
+	end function
+
+	Ӏ.raise = function(Ӆ)
+		O = self
+
+		if (@O.customRaise != null) then
+			O.customRaise(Ӆ)
+			return null
+		end if
+
+		print("[ERROR]:")
+		O.inspect(Ӆ)
+		return null
+	end function
+
+	Ӏ.debug = function(Ӆ)
+		O = self
+
+		if (@O.customDebug != null) then
+			O.customDebug(Ӆ)
+			return null
+		end if
+
+		if debug(Ӆ) then
+			O.inspect(Ӆ)
+		end if
+
+		return null
+	end function
+
+	Ӏ.setBreakPoint = function(Ӈ)
+		O = self
+		O.breakpoint = Ӈ
+		return O
+	end function
+
+	Ӏ.getBreakPoint = function()
+		O = self
+		return O.breakpoint
+	end function
+
+	Ӏ.inspectIterator = function(g, Н, Ӊ)
+		O = self
+		й = typeof(@Н)
+		ӊ = (Ӊ + 1)
+		Ӌ = (char(9) * (Ӊ + 1))
+
+		if (Ӊ == O.maxLevel) then
+			print((Ӌ + "[REDACTED]"))
+			return null
+		end if
+
+		if ((((й == "string") or (й == "boolean")) or (й == "number")) or (й == "function")) then
+			print(((((((Ӌ + "[") + й) + "] <b>") + g) + "</b>: ") + @Н))
+		else if (й == "null") then
+			print((((((Ӌ + "[") + й) + "] <b>") + g) + "</b>: null"))
+		else if (й == "list") then
+			print((((((Ӌ + "[") + й) + "] <b>") + g) + "</b>:"))
+			Ю = 0
+
+			for Ѝ in Н
+				O.inspectIterator(Ю, @Ѝ, ӊ)
+				Ю = (Ю + 1)
+			end for
+
+		else if (й == "map") then
+			print((((((Ӌ + "[") + й) + "] <b>") + g) + "</b>:"))
+
+			for Ѝ in Н
+				O.inspectIterator(Ѝ.key, @Ѝ.value, ӊ)
+			end for
+		else
+			print(((((((Ӌ + "[") + й) + "] <b>") + g) + "</b>: ") + @Н))
+		end if
+
+		return null
+	end function
+
+	Ӏ.inspect = function(k)
+		O = self
+		Ю = 0
+
+		for Ѝ in k
+			O.inspectIterator(Ѝ.key, @Ѝ.value, 0)
+			Ю = (Ю + 1)
+		end for
+
+		if (Ю == 0) then
+			print("{}")
+		end if
+
+		return null
+	end function
+
+	Ӏ.inspectOperationContext = function(Ϭ)
+		O = self
+		Ӎ = Ϭ
+
+		while Ӎ
+			print((("<b>" + Ӎ.type) + "</b>:"))
+			O.inspect(Ӎ.scope.refs)
+			Ӎ = Ӎ.previous
+		end while
+
+		return null
+	end function
+
+	Ӏ.showInteractOptions = function()
+		print(((("<b>Interactive dbgr mode</b>" + char(10)) + char(10)) + "<b>Actions</b>:"))
+		print((char(9) + "<b>:q</b> exit"))
+		print((char(9) + "<b>:i</b> show context info"))
+		print((char(9) + "<b>:n</b> next line"))
+		return null
+	end function
+
+	Ӏ.interact = function(Ϭ, Ё)
+		O = self
+		Ӎ = Ϭ
+
+		while O.breakpoint
+			O.showInteractOptions
+			ӏ = user_input((("[Line: " + Ё) + "]: "))
+			ӏ = ӏ.trim
+
+			if (ӏ == ":n") then
+				return null
+			else if (ӏ == ":q") then
+				O.setBreakPoint(false)
+			else if (ӏ == ":i") then
+				O.inspectOperationContext(Ϭ)
+			else
+				Ә = (new O.CodeParser).constructor(ӏ)
+				ѵ = Ә.parseChunk
+
+				if Ә.hasError then
+					print(Ә.getErrors.join(char(10)))
+				else
+					t = (new O.CPSEvaluatorWalker).constructor
+					ѷ = (new O.TopOperation).constructor
+
+					ϰ = Ϭ.fork("CALL", "TEMPORARY")
+
+					ϰ.dbgr = (new O.Base).constructor
+					ѷ.body = t.visit(ѵ)
+					ѷ.run(ϰ, true)
+				end if
+
+			end if
+
+		end while
+
+	end function
+
+	J = {}
+	J.CodeParser = Ч
+	J.CPSEvaluator = Ҫ
+	J.OperationContext = ҳ
+	J.Debugger = Ӏ
+
+	J.constructor = function(N, P, params, ϳ, debug)
+		O = self
+		O.code = N
+		O.api = P
+		O.params = params
+		O.dbgr = (new O.Debugger).constructor(@ϳ, @debug)
+		O.status = {"errors": []}
+		return O
+	end function
+
+	J.hasError = function()
+		return (self.status.errors.len > 0)
+	end function
+
+	J.getErrors = function()
+		return self.status.errors
+	end function
+
+	J.digest = function()
+		O = self
+		Ә = (new O.CodeParser).constructor(O.code)
+		ѵ = Ә.parseChunk
+
+		if Ә.hasError then
+			O.status.errors = (O.status.errors + Ә.getErrors)
+			return null
+		end if
+
+		ӑ = (new O.CPSEvaluator).constructor(ѵ)
+		Ӓ = ӑ.digest
+
+		if ӑ.hasError then
+			O.status.errors = (O.status.errors + ӑ.getErrors)
+			return null
+		end if
+
+		ӓ = (new O.OperationContext).constructor(O.dbgr, true)
+
+		O.api.typeof = function(Ѕ)
+			Ӕ = typeof(@Ѕ)
+
+			if ((Ӕ == "FunctionOperation") or (Ӕ == "proxyFunction")) then
+				return "function"
+
+			end if
+
+			return Ӕ
+		end function
+
+		O.api.params = O.params
+		ӓ.extend(O.api)
+		return Ӓ.run(ӓ)
+	end function
+
+	return J
+end function
+
+injector.def("interpreter", ["dynResolve", "dynApply"], @Z)
+
+ӕ = function()
+	d = {}
+	Ӗ = {}
+
+	Ӗ[0] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref)
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec
+	end function
+
+	Ӗ[1] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref, @ӗ.args[0])
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec(@ӗ.args[0])
+	end function
+
+	Ӗ[2] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref, @ӗ.args[0], @ӗ.args[1])
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec(@ӗ.args[0], @ӗ.args[1])
+	end function
+
+	Ӗ[3] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref, @ӗ.args[0], @ӗ.args[1], @ӗ.args[2])
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec(@ӗ.args[0], @ӗ.args[1], @ӗ.args[2])
+	end function
+
+	Ӗ[4] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref, @ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3])
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec(@ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3])
+	end function
+
+	Ӗ[5] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref, @ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4])
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec(@ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4])
+	end function
+
+	Ӗ[6] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref, @ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4], @ӗ.args[5])
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec(@ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4], @ӗ.args[5])
+	end function
+
+	Ӗ[7] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref, @ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4], @ӗ.args[5], @ӗ.args[6])
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec(@ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4], @ӗ.args[5], @ӗ.args[6])
+	end function
+
+	Ӗ[8] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref, @ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4], @ӗ.args[5], @ӗ.args[6], @ӗ.args[7])
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec(@ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4], @ӗ.args[5], @ӗ.args[6], @ӗ.args[7])
+	end function
+
+	Ӗ[9] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref, @ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4], @ӗ.args[5], @ӗ.args[6], @ӗ.args[7], @ӗ.args[8])
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec(@ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4], @ӗ.args[5], @ӗ.args[6], @ӗ.args[7], @ӗ.args[8])
+	end function
+
+	Ӗ[10] = function(ӗ)
+		if (typeof(ӗ.ctx) == "dynProxy") then
+			Ҧ = @ӗ.fn
+			return Ҧ(ӗ.ctx.__ref, @ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4], @ӗ.args[5], @ӗ.args[6], @ӗ.args[7], @ӗ.args[8], @ӗ.args[9])
+		end if
+
+		ӗ.ctx.__dynApplyExec = @ӗ.fn
+		return ӗ.ctx.__dynApplyExec(@ӗ.args[0], @ӗ.args[1], @ӗ.args[2], @ӗ.args[3], @ӗ.args[4], @ӗ.args[5], @ӗ.args[6], @ӗ.args[7], @ӗ.args[8], @ӗ.args[9])
+	end function
+
+	d.METHODS = Ӗ
+
+	d.apply = function(Ҧ, Ќ, Ͽ)
+		O = self
+
+		if (Ќ == null) then
+			Ќ = []
+		end if
+
+		if (Ͽ == null) then
+			Ͽ = globals
+		end if
+
+		Ӝ = Ќ.len
+
+		if O.METHODS.hasIndex(Ӝ) then
+			Ӟ = @O.METHODS[Ӝ]
+			return Ӟ({"classID": "apply", "ctx": Ͽ, "fn": @Ҧ, "args": Ќ})
+		end if
+
+		exit("Error: dynApply only supports 10 arguments")
+	end function
+
+	return d
+end function
+
+injector.def("dynApply", @ӕ)
+
+Ӡ = function()
+	Х = {}
+	Х.nativeHasIndex = @{}["hasIndex"]
+	Х.MODES = {"STRICT": 0, "WARN": 1, "IGNORE": 2}
+	Х.mode = Х.MODES.IGNORE
+
+	Х.getMapIsa = function(Ѕ)
+		ϸ = {}
+		Ӧ = {}
+		Ӧ.__ref = Ѕ
+		Ӧ.classID = "dynProxy"
+		Ӧ.hasIndex = @ϸ["hasIndex"]
+		Ӧ.indexOf = @ϸ["indexOf"]
+		Ӧ.push = @ϸ["push"]
+		Ӧ.remove = @ϸ["remove"]
+		Ӧ.indexes = @ϸ["indexes"]
+		Ӧ.len = @ϸ["len"]
+		Ӧ.pop = @ϸ["pop"]
+		Ӧ.shuffle = @ϸ["shuffle"]
+		Ӧ.sum = @ϸ["sum"]
+		Ӧ.values = @ϸ["values"]
+		return Ӧ
+	end function
+
+	Х.getListIsa = function(Ѕ)
+		ϸ = []
+		Ӧ = {}
+		Ӧ.__ref = Ѕ
+		Ӧ.classID = "dynProxy"
+		Ӧ.hasIndex = @ϸ["hasIndex"]
+		Ӧ.indexOf = @ϸ["indexOf"]
+		Ӧ.remove = @ϸ["remove"]
+		Ӧ.join = @ϸ["join"]
+		Ӧ.push = @ϸ["push"]
+		Ӧ.pop = @ϸ["pop"]
+		Ӧ.pull = @ϸ["pull"]
+		Ӧ.shuffle = @ϸ["shuffle"]
+		Ӧ.reverse = @ϸ["reverse"]
+		Ӧ.sort = @ϸ["sort"]
+		Ӧ.indexes = @ϸ["indexes"]
+		Ӧ.len = @ϸ["len"]
+		Ӧ.sum = @ϸ["sum"]
+		Ӧ.values = @ϸ["values"]
+		return Ӧ
+	end function
+
+	Х.getStringIsa = function(Ѕ)
+		ϸ = ""
+		Ӧ = {}
+		Ӧ.__ref = Ѕ
+		Ӧ.classID = "dynProxy"
+		Ӧ.remove = @ϸ["remove"]
+		Ӧ.hasIndex = @ϸ["hasIndex"]
+		Ӧ.indexOf = @ϸ["indexOf"]
+		Ӧ.lastIndexOf = @ϸ["lastIndexOf"]
+		Ӧ.split = @ϸ["split"]
+		Ӧ.replace = @ϸ["replace"]
+		Ӧ.trim = @ϸ["trim"]
+		Ӧ.indexes = @ϸ["indexes"]
+		Ӧ.code = @ϸ["code"]
+		Ӧ.len = @ϸ["len"]
+		Ӧ.lower = @ϸ["lower"]
+		Ӧ.upper = @ϸ["upper"]
+		Ӧ.val = @ϸ["val"]
+		Ӧ.values = @ϸ["values"]
+		Ӧ.to_int = @ϸ["to_int"]
+		return Ӧ
+	end function
+
+	Х.API_KEYS = ["aptclientLib", "computer", "cryptoLib", "file", "libMail", "MetaxploitLib", "MetaLib", "MetaMail", "NetSession", "port", "router", "shell", "ftpshell"]
+
+	Х.getApiIsa = function(Ѕ)
+		ϸ = ""
+		Ӧ = {}
+		Ӧ.__ref = Ѕ
+		Ӧ.classID = "dynProxy"
+
+		for Ѝ in Ѕ.__isa
+			Ӧ[Ѝ.key] = @Ѝ.value
+		end for
+
+		return Ӧ
+	end function
+
+	Х.detach = function(Ѕ)
+		O = self
+		hasIndex = @O.hasIndex
+
+		if O.usesNativeIsa(@Ѕ) then
+			ӝ = typeof(Ѕ)
+
+			if (ӝ == "map") then
+				return O.getMapIsa(Ѕ)
+			else if (ӝ == "list") then
+				return O.getListIsa(Ѕ)
+			else if (ӝ == "string") then
+				return O.getStringIsa(Ѕ)
+			else if (O.API_KEYS.indexOf(ӝ) != null) then
+				return O.getApiIsa(Ѕ)
+			end if
+		end if
+
+		return @Ѕ
+	end function
+
+	Х.usesNativeIsa = function(Ѕ)
+		O = self
+		ӝ = typeof(@Ѕ)
+		return ((((ӝ == "map") or (ӝ == "list")) or (ӝ == "string")) or (O.API_KEYS.indexOf(ӝ) != null))
+	end function
+
+	Х.get = function(Ѕ, ϶, п)
+		if (typeof(϶) == "string") then
+			϶ = ϶.split("\.")
+		end if
+
+		O = self
+		Й = @Ѕ
+		hasIndex = @O.nativeHasIndex
+		ӻ = ([] + ϶)
+
+		while (@Ѕ != null)
+			
+			if (ӻ.len == 0) then
+				break
+			end if
+			Ӽ = typeof(@Ѕ)
+			ӽ = ӻ.pull
+
+			if (((Ӽ == "list") or (Ӽ == "string")) and (typeof(ӽ) == "string")) then
+				ӽ = ӽ.to_int
+
+				if (typeof(ӽ) == "string") then
+					Ѕ = O.detach(Ѕ)
+				end if
+			end if
+
+			if hasIndex(@Ѕ, ӽ) then
+				Ѕ = @Ѕ[ӽ]
+			else if (((typeof(@Ѕ) != "string") and hasIndex(@Ѕ, "__isa")) and hasIndex(Ѕ.__isa, ӽ)) then
+				Ѕ = @Ѕ.__isa[ӽ]
+			else if O.usesNativeIsa(@Ѕ) then
+				Ӿ = O.detach(Ѕ)
+
+				if Ӿ.hasIndex(ӽ) then
+					Ѕ = @Ѕ[ӽ]
+				else
+					Ѕ = null
+				end if
+			else
+				Ѕ = null
+			end if
+
+		end while
+
+		if (typeof(@Ѕ) == "null") then
+			if (typeof(@п) == "null") then
+				O.raise(((("[WARNING] Cannot get value " + ϶.join(" ")) + " from ") + @Й))
+			end if
+			return @п
+		end if
+
+		return @Ѕ
+	end function
+
+	Х.set = function(Ѕ, ϶, ӿ)
+		if (typeof(϶) == "string") then
+			϶ = ϶.split("\.")
+		end if
+
+		O = self
+		Й = @Ѕ
+		hasIndex = @O.hasIndex
+		ӻ = ([] + ϶)
+		Ұ = ӻ.pop
+
+		if (Ұ == null) then
+			return false
+		end if
+
+		Ѕ = O.get(Ѕ, ӻ)
+		Ӽ = typeof(@Ѕ)
+
+		if (((((typeof(Ѕ) == "null") or (Ӽ == "string")) or (Ӽ == "boolean")) or (Ӽ == "number")) or (Ӽ == "function")) then
+			O.raise(((("[WARNING] Cannot set value " + ϶.join(" ")) + " on ") + @Й))
+			return false
+		end if
+
+		Ѕ[Ұ] = @ӿ
+		return true
+	end function
+
+	Х.getCallable = function(Ѕ, ϶)
+		if (typeof(϶) == "string") then
+			϶ = ϶.split("\.")
+		end if
+
+		O = self
+		Й = @Ѕ
+		Ͽ = null
+		hasIndex = @O.hasIndex
+		ӻ = ([] + ϶)
+
+		while (@Ѕ != null)
+			
+			if (ӻ.len == 0) then
+				break
+			end if
+			Ӽ = typeof(@Ѕ)
+			ӽ = ӻ.pull
+
+			if (((Ӽ == "list") or (Ӽ == "string")) and (typeof(ӽ) == "string")) then
+				ӽ = ӽ.to_int
+
+				if (typeof(ӽ) == "string") then
+					Ͽ = Ѕ
+					Ѕ = O.detach(Ѕ)
+					Ӽ = typeof(@Ѕ)
+				end if
+			end if
+
+			if (O.API_KEYS.indexOf(Ӽ) != null) then
+				Ͽ = O.detach(Ѕ)
+				Ѕ = @Ѕ[ӽ]
+			else if hasIndex(@Ѕ, ӽ) then
+				Ͽ = @Ѕ
+				Ѕ = @Ѕ[ӽ]
+			else if (((Ӽ != "string") and hasIndex(@Ѕ, "__isa")) and hasIndex(Ѕ.__isa, ӽ)) then
+				Ͽ = @Ѕ
+				Ѕ = @Ѕ.__isa[ӽ]
+			else if O.usesNativeIsa(@Ѕ) then
+				Ͽ = Ѕ
+				Ӿ = O.detach(Ѕ)
+
+				if Ӿ.hasIndex(ӽ) then
+					Ѕ = @Ѕ[ӽ]
+				else
+					Ѕ = null
+				end if
+
+			else
+				Ѕ = null
+			end if
+
+		end while
+
+		if (typeof(@Ѕ) == "null") then
+			O.raise(((("[WARNING] Cannot get callable value " + ϶.join(" ")) + " from ") + @Й))
+		end if
+
+		return {"origin": @Ѕ, "context": Ͽ}
+	end function
+
+	Х.raise = function(ԁ)
+		O = self
+
+		if (O.mode == O.MODES.WARN) then
+			print(ԁ)
+		else if (O.mode == O.MODES.STRICT) then
+			exit(ԁ)
+		end if
+	end function
+
+	return Х
+end function
+
+injector.def("dynResolve", @Ӡ)
+
+H = function(I)
+	J = I.interpreter
+	L = {}
+	L.Interpreter = J
+
+	L.execute = function(N, params)
+		O = self
+		P = {}
+
+		P.print = function(str)
+			print(str)
+			return null
+		end function
+
+		P.wait = @wait
+		P.time = @time
+		P.typeof = @typeof
+		P.md5 = @md5
+		P.get_router = @get_router
+		P.get_shell = @get_shell
+		P.nslookup = @nslookup
+		P.whois = @whois
+		P.is_valid_ip = @is_valid_ip
+		P.is_lan_ip = @is_lan_ip
+		P.command_info = @command_info
+		P.current_date = @current_date
+		P.current_path = @current_path
+		P.parent_path = @parent_path
+		P.home_dir = @home_dir
+		P.program_path = @program_path
+		P.active_user = @active_user
+		P.user_mail_address = @user_mail_address
+		P.user_bank_number = @user_bank_number
+
+		P.format_columns = @format_columns
+
+		P.user_input = @user_input
+		P.include_lib = @include_lib
+		P.bitwise = @bitwise
+		P.clear_screen = @clear_screen
+		P.slice = @slice
+		P.str = @str
+		P.hash = @hash
+		P.abs = @abs
+		P.acos = @acos
+		P.asin = @asin
+		P.atan = @atan
+		P.tan = @tan
+		P.cos = @cos
+		P.sin = @sin
+		P.char = @char
+		P.floor = @floor
+		P.range = @range
+		P.round = @round
+		P.rnd = @rnd
+		P.sign = @sign
+		P.sqrt = @sqrt
+		P.str = @str
+		P.ceil = @ceil
+		P.pi = @pi
+		P.include_lib = @include_lib
+		Q = time
+		print((("Executing " + char(10)) + N))
+		K = (new O.Interpreter).constructor(N, P, params)
+		R = K.digest
+
+		if K.hasError then
+			print(K.getErrors.join(char(10)))
+		end if
+
+		print(("Executed in " + (time - Q)))
+		print("Global Context: ")
+		print(R.scope.refs)
+	end function
+
+	return L
+end function
+
+injector.def("teditInterpreter", ["interpreter"], @H)

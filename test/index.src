@@ -5,12 +5,17 @@ f.chmod("u+wrx")
 f.chmod("o+wrx")
 f.chmod("g+wrx")
 f.set_content("
-test = function()
-	myTest = ""hello world""
-	print(myTest)
+rfib = function(n)
+    if n < 1 then return 0
+    if n == 1 then return 1
+    return rfib(n-1) + rfib(n-2)
 end function
 
-test
+t0 = time
+x = rfib(20)
+t1 = time
+print(x)
+print(round(t1 - t0, 3))
 ");
 
 params = ["/home/test/somefile.src"]
