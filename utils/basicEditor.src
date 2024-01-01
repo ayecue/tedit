@@ -329,7 +329,7 @@ BasicEditor.setOptions = function()
 		me.exception("<color=red>Invalid option</color>")
 	end if
 
-	if (EnrichedUserInput.confirm("Do you want to set another option?")) then
+	if (me.enrichedUserInput.confirm("Do you want to set another option?")) then
 		me.setOptions()
 	end if
 end function
